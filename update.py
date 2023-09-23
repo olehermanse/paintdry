@@ -1,6 +1,7 @@
 import os
 import sys
 import copy
+from time import sleep
 
 from utils import JsonFile, ensure_folder, ensure_json_file, shell, sha, timestamp
 
@@ -161,8 +162,15 @@ class LookUpDB:
         self.database.save(os.path.join(self.snapshot, "database.json"))
 
 def main():
-    db = LookUpDB()
-    db.update()
+    if len(sys.argv) > 1:
+        assert(sys.argv[1] == "forever")
+        while True:
+            db = LookUpDB()
+            db.update()
+            sleep(60)
+    else:
+        db = LookUpDB()
+        db.update()
 
 if __name__ == "__main__":
     main()

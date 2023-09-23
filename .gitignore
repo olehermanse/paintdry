@@ -19,5 +19,7 @@
 
 # Go workspace file
 go.work
+
+/data/
 /state/
 __pycache__
