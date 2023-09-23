@@ -1,0 +1,66 @@
+<html>
+<body>
+<h1>LookupDB</h1>
+<h2>Search</h2>
+<form id="search_form">
+  <input id="search_form_text" type="text"></input>
+  <input type="submit" />
+</form>
+<h2>Result</h2>
+<div id="search_result">
+</div>
+<script type="module">
+
+function setup_events() {
+    const search_form = document.getElementById("search_form");
+    const search_form_text = document.getElementById("search_form_text");
+    search_form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const query = search_form_text.value;
+        window.location.href = "/" + query
+    });
+}
+
+async function perform_search(){
+    const div = document.getElementById("search_result");
+    div.innerHTML = "Searching...";
+
+    const path = window.location.pathname;
+    if (path != "/")
+    {
+        const response = await fetch("/api/lookup" + path);
+        const search_result = await response.json();
+        let html = "";
+        html += "<h3>" + search_result["id"] + "</h3>"
+        if ("links" in search_result) {
+            html += "<h4>Links</h4>"
+            for (let key in search_result["links"]){
+                let value = search_result["links"][key];
+                let link = '<a href="/' + key + '">' + key + '</a>'
+                html += "" + value + ": " + link;
+            }
+        }
+        if ("alerts" in search_result) {
+            html += "<h4>Alerts</h4>"
+            for (let key in search_result["alerts"]){
+                let error = search_result["alerts"][key]["error"];
+                error = error.replaceAll("<", "&lt;").replaceAll("<", "&gt;")
+                html += "<pre><code>" + error + "</pre></code>";
+            }
+        }
+        html += "<h4>Raw</h4>"
+        html += "<pre><code>" + JSON.stringify(search_result, null, 2) + "</pre></code>";
+
+        console.log(search_result);
+        div.innerHTML = html;
+    }
+    else
+    {
+        div.innerHTML = "No result";
+    }
+}
+setup_events();
+await perform_search();
+</script>
+</body>
+</html>

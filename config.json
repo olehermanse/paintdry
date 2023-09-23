@@ -1,0 +1,6 @@
+{
+  "targets": [
+    {"type": "website_single", "url": "https://mender.io"},
+    {"type": "git_repo", "url": "https://github.com/cfengine/core"}
+  ]
+}
