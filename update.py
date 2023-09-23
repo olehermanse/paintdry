@@ -10,8 +10,6 @@ def get_link(entry, link_name):
             return key
     raise KeyError
 
-
-
 def merge(a,b):
     match a:
         case str():

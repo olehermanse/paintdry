@@ -9,6 +9,9 @@
 <h2>Result</h2>
 <div id="search_result">
 </div>
+<h2>Other entries</h2>
+<div id="other_entries">
+</div>
 <script type="module">
 
 function setup_events() {
@@ -28,7 +31,7 @@ async function perform_search(){
     const path = window.location.pathname;
     if (path != "/")
     {
-        const response = await fetch("/api/lookup" + path);
+        const response = await fetch("/api/search" + path);
         const search_result = await response.json();
         let html = "";
         html += "<h3>" + search_result["id"] + "</h3>"
@@ -59,8 +62,21 @@ async function perform_search(){
         div.innerHTML = "No result";
     }
 }
+
+async function populate_list(){
+    const div = document.getElementById("other_entries");
+    div.innerHTML = "Retrieving...";
+    const response = await fetch("/api/list");
+    const list_result = await response.json();
+    let html = "";
+    for (let x of list_result) {
+        html += '<a href="/' + x + '">' + x + "</a><br />";
+    }
+    div.innerHTML = html;
+}
 setup_events();
 await perform_search();
+await populate_list();
 </script>
 </body>
 </html>
