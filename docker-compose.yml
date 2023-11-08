@@ -1,5 +1,5 @@
 services:
-  db:
+  postgres:
     image: postgres
     volumes:
       - ./data/db:/var/lib/postgresql/data
@@ -17,7 +17,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     depends_on:
-      - db
+      - postgres
   updater:
     build:
       context: .
@@ -30,4 +30,4 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     depends_on:
-      - db
+      - postgres

@@ -3,6 +3,7 @@ import json
 
 from flask import Flask, abort, send_file
 from markupsafe import escape
+import psycopg2
 
 hostname = sys.argv[1]
 port = int(sys.argv[2])
@@ -14,6 +15,11 @@ app = Flask(__name__)
 
 @app.route('/api/search/<path:path>')
 def show_user_profile(path):
+    try:
+        conn = psycopg2.connect("host='postgres' dbname='postgres' user='postgres' host='postgres' password='postgres'")
+        print("Connected to PG")
+    except:
+        print("I am unable to connect to the database")
     missing_http = not (path.startswith("http://") or path.startswith("https://"))
     possibilities = [
         path,
@@ -49,6 +55,11 @@ def list_entries():
 @app.route('/')
 @app.route('/<path:path>')
 def hello_world(path=None):
+    try:
+        conn = psycopg2.connect("host='postgres' dbname='postgres' user='postgres' host='postgres' password='postgres'")
+        print("Connected to PG")
+    except:
+        print("I am unable to connect to the database")
     return send_file("index.html")
 
 def main():

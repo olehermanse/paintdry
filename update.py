@@ -3,6 +3,8 @@ import sys
 import copy
 from time import sleep
 
+import psycopg2
+
 from utils import JsonFile, ensure_folder, ensure_json_file, shell, sha, timestamp
 
 def get_link(entry, link_name):
@@ -38,6 +40,11 @@ def merge(a,b):
 class LookUpDB:
     def __init__(self):
         self.database = None
+        try:
+            conn = psycopg2.connect("host='postgres' dbname='postgres' user='postgres' host='postgres' password='postgres'")
+            print("Connected to PG")
+        except:
+            print("I am unable to connect to the database")
 
     def _upsert(self, entry):
         assert "id" in entry
@@ -167,7 +174,7 @@ def main():
         while True:
             db = LookUpDB()
             db.update()
-            sleep(60)
+            sleep(10)
     else:
         db = LookUpDB()
         db.update()
