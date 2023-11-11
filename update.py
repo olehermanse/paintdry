@@ -37,7 +37,24 @@ def merge(a,b):
                 return b
     assert False
 
-class LookUpDB:
+def module_website_single(database, entry):
+    print(f'Website: {entry["url"]}')
+    entry = database.insert_entry(entry["url"], entry)
+    target_folder = os.path.join(database.snapshot, get_link(entry, "string_hash"))
+    ensure_folder(target_folder)
+    destination = os.path.join(target_folder, "index.html")
+    r, out, err = shell(f'curl {entry["url"]} -o {destination}')
+    r, out, err = shell(f'cd {target_folder} && prettier --no-color index.html')
+    if err:
+        database.add_alert(entry, error=err)
+    elif r != 0:
+        sys.exit("Unknown error")
+
+def module_git_repo(database, entry):
+    print(f'Git repo: {entry["url"]}')
+    database.insert_entry(entry["url"], entry)
+
+class Database:
     def __init__(self):
         self.database = None
         try:
@@ -85,7 +102,6 @@ class LookUpDB:
     def add_alert(self, entry, error):
         if not "alerts" in entry:
             entry["alerts"] = {}
-        
         error_hash = sha(error)
         time = timestamp()
 
@@ -100,29 +116,12 @@ class LookUpDB:
             entry["alerts"][error_hash]["last_seen"] = time
         self.update_entry(entry)
 
-    def process_website_single(self, entry):
-        print(f'Website: {entry["url"]}')
-        entry = self.insert_entry(entry["url"], entry)
-        target_folder = os.path.join(self.snapshot, get_link(entry, "string_hash"))
-        ensure_folder(target_folder)
-        destination = os.path.join(target_folder, "index.html")
-        r, out, err = shell(f'curl {entry["url"]} -o {destination}')
-        r, out, err = shell(f'cd {target_folder} && prettier --no-color index.html')
-        if err:
-            self.add_alert(entry, error=err)
-        elif r != 0:
-            sys.exit("Unknown error")
-
-    def process_git_repo(self, entry):
-        print(f'Git repo: {entry["url"]}')
-        self.insert_entry(entry["url"], entry)
-
     def process(self, entry):
         match entry["type"]:
-            case 'website_single':
-                self.process_website_single(entry)
-            case 'git_repo':
-                self.process_git_repo(entry)
+            case "website_single":
+                module_website_single(self, entry)
+            case "git_repo":
+                module_git_repo(self, entry)
             case other:
                 sys.exit(f"Target '{entry['type']}' in config not supported!")
 
@@ -172,11 +171,11 @@ def main():
     if len(sys.argv) > 1:
         assert(sys.argv[1] == "forever")
         while True:
-            db = LookUpDB()
+            db = Database()
             db.update()
             sleep(10)
     else:
-        db = LookUpDB()
+        db = Database()
         db.update()
 
 if __name__ == "__main__":
