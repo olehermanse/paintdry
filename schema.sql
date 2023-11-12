@@ -21,8 +21,3 @@ CREATE TABLE IF NOT EXISTS links (
   text TEXT NOT NULL,
   dst TEXT NOT NULL
 );
-
-INSERT INTO index (identifier)
-  VALUES('test_entry')
-  ON CONFLICT (identifier)
-  DO UPDATE SET last_seen = NOW();
