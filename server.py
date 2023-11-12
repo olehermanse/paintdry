@@ -5,27 +5,20 @@ from flask import Flask, abort, send_file
 from markupsafe import escape
 import psycopg2
 
+from database import Database
+
 hostname = sys.argv[1]
 port = int(sys.argv[2])
 
-with open("state/database.json", "r") as f:
-    database = json.loads(f.read())
+database = Database()
 
 app = Flask(__name__)
 
-@app.route('/api/search/<path:path>')
+
+@app.route("/api/search/<path:path>")
 def show_user_profile(path):
-    try:
-        conn = psycopg2.connect("host='postgres' dbname='postgres' user='postgres' host='postgres' password='postgres'")
-        print("Connected to PG")
-    except:
-        print("I am unable to connect to the database")
     missing_http = not (path.startswith("http://") or path.startswith("https://"))
-    possibilities = [
-        path,
-        path.strip(),
-        "SHA=" + path
-    ]
+    possibilities = [path, path.strip(), "SHA=" + path]
     if missing_http:
         possibilities.append("https://" + path)
         possibilities.append("https://" + path + "/")
@@ -43,27 +36,27 @@ def show_user_profile(path):
         if missing_http:
             possibilities.append("http://" + path)
             possibilities.append("https://" + path)
-    for x in possibilities:
-        if x in database["index"]:
-            return database["index"][x]
-    abort(404)
 
-@app.route('/api/list')
+    result = database.get_one_of(possibilities)
+    if not result:
+        abort(404)
+    return result
+
+
+@app.route("/api/list")
 def list_entries():
-    return sorted([key for key in database["index"]])
+    return sorted([key for key in database.get_keys()])
 
-@app.route('/')
-@app.route('/<path:path>')
+
+@app.route("/")
+@app.route("/<path:path>")
 def hello_world(path=None):
-    try:
-        conn = psycopg2.connect("host='postgres' dbname='postgres' user='postgres' host='postgres' password='postgres'")
-        print("Connected to PG")
-    except:
-        print("I am unable to connect to the database")
     return send_file("index.html")
+
 
 def main():
     app.run(host=hostname, port=port)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

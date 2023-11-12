@@ -34,7 +34,7 @@ async function perform_search(){
         const response = await fetch("/api/search" + path);
         const search_result = await response.json();
         let html = "";
-        html += "<h3>" + search_result["id"] + "</h3>"
+        html += "<h3>" + search_result["identifier"] + "</h3>"
         if ("links" in search_result) {
             html += "<h4>Links</h4>"
             for (let key in search_result["links"]){

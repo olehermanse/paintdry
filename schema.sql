@@ -24,5 +24,5 @@ CREATE TABLE IF NOT EXISTS links (
 
 INSERT INTO index (identifier)
   VALUES('test_entry')
-  ON CONFLICT (entry)
+  ON CONFLICT (identifier)
   DO UPDATE SET last_seen = NOW();
