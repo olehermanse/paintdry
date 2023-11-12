@@ -37,22 +37,23 @@ def merge(a,b):
                 return b
     assert False
 
-def module_website_single(updater, entry):
+def module_website_single(database, snapshot, entry):
     print(f'Website: {entry["url"]}')
-    entry = updater.insert_entry(entry["url"], entry)
-    target_folder = os.path.join(updater.snapshot, get_link(entry, "string_hash"))
-    ensure_folder(target_folder)
-    destination = os.path.join(target_folder, "index.html")
-    r, out, err = shell(f'curl {entry["url"]} -o {destination}')
-    r, out, err = shell(f'cd {target_folder} && prettier --no-color index.html')
-    if err:
-        updater.database.add_alert(entry, error=err)
-    elif r != 0:
-        sys.exit("Unknown error")
+    database.upsert_entry(entry["url"])
+    # entry = database.insert_entry(entry["url"], entry)
+    # target_folder = os.path.join(snapshot, get_link(entry, "string_hash"))
+    # ensure_folder(target_folder)
+    # destination = os.path.join(target_folder, "index.html")
+    # r, out, err = shell(f'curl {entry["url"]} -o {destination}')
+    # r, out, err = shell(f'cd {target_folder} && prettier --no-color index.html')
+    # if err:
+    #     updater.database.add_alert(entry, error=err)
+    # elif r != 0:
+    #     sys.exit("Unknown error")
 
-def module_git_repo(updater, entry):
+def module_git_repo(database, snapshot, entry):
     print(f'Git repo: {entry["url"]}')
-    updater.insert_entry(entry["url"], entry)
+    database.upsert_entry(entry["url"], entry)
 
 def connect_loop():
     while True:
@@ -66,7 +67,6 @@ def connect_loop():
 
 class Database:
     def __init__(self):
-        self.database_json = None
         self.connection = connect_loop()
 
     def _query(self, query, args=None):
@@ -76,28 +76,29 @@ class Database:
             cur.execute(query, args)
         else:
             cur.execute(query)
+        result = []
+        while True:
+            try:
+                row = cur.fetchone()
+            except:
+                break
+            if not row:
+                break
+            result.append(row)
         conn.commit()
-        result = cur.fetchall()
         cur.close()
         return result
 
-    def upsert_entry(self, entry, metadata):
-        self.query()
-        pass
+    def upsert_entry(self, key, metadata=None, urls=None):
+        return self._query("""
+          INSERT INTO index (entry)
+            VALUES(%s)
+            ON CONFLICT (entry)
+            DO UPDATE SET last_seen = NOW();
+        """, (key,))
 
     def upsert_link(self, a, text, b):
         pass
-
-    def _upsert(self, entry):
-        assert "id" in entry
-        index_id = entry["id"]
-        target = {}
-        if index_id in self.database_json["index"]:
-            target = self.database_json["index"][index_id]
-        new_entry = merge(target, entry)
-        self.database_json["index"][index_id] = new_entry
-        self.database_json.save()
-        return self.database_json["index"][index_id]
 
     def create_related_hash(self, key, value):
         hash = sha(key)
@@ -117,44 +118,17 @@ class Database:
         value["links"] = {hash: "string_hash"}
         return self._upsert(value)
 
-    def update_entry(self, entry):
-        assert "id" in entry
-        assert entry["id"] in self.database_json["index"]
-        self.database_json["index"][entry["id"]] = entry
-        self.database_json.save()
-        self._upsert(entry)
-
-    def add_alert(self, entry, error):
-        if not "alerts" in entry:
-            entry["alerts"] = {}
-        error_hash = sha(error)
-        time = timestamp()
-
-        if not error_hash in entry["alerts"]:
-            entry["alerts"][error_hash] = {
-                "error": error,
-                "first_seen": time,
-                "last_seen": time,
-            }
-            print(f"New alert for '{entry['id']}'")
-        else:
-            entry["alerts"][error_hash]["last_seen"] = time
-        self.update_entry(entry)
-
 
 class Updater:
     def __init__(self):
         self.database = Database()
 
-    def insert_entry(self, key, value):
-        return self.database.insert_entry(key, value)
-
     def process(self, entry):
         match entry["type"]:
             case "website_single":
-                module_website_single(self, entry)
+                module_website_single(self.database, self.snapshot, entry)
             case "git_repo":
-                module_git_repo(self, entry)
+                module_git_repo(self.database, self.snapshot, entry)
             case other:
                 sys.exit(f"Target '{entry['type']}' in config not supported!")
 
@@ -164,9 +138,6 @@ class Updater:
 
         # Setup state
         state = ensure_folder("./state")
-        self.database.database_json = JsonFile(os.path.join("state", "database.json"))
-        if not "index" in self.database.database_json:
-            self.database.database_json["index"] = {}
         metadata = JsonFile(os.path.join("state", "metadata.json"))
 
         # Setup snapshots
@@ -194,11 +165,6 @@ class Updater:
         }
         metadata.save()
         metadata.save(os.path.join(self.snapshot, "metadata.json"))
-
-        # TODO: No need to save database every time
-        #       This is mainly here for debugging / development
-        self.database.database_json.save()
-        self.database.database_json.save(os.path.join(self.snapshot, "database.json"))
 
 def main():
     if len(sys.argv) > 1:
