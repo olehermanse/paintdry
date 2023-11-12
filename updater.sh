@@ -1,3 +1,3 @@
 sleep 10
 psql -f schema.sql
-python update.py forever
+python lookup/update.py forever

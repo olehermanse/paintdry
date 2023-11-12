@@ -17,4 +17,4 @@ WORKDIR /lookup
 COPY requirements.txt /lookup/
 RUN pip install -r requirements.txt
 COPY --from=build /lookup /lookup
-CMD ["python", "server.py", "0.0.0.0", "8000"]
+CMD ["python", "lookup/server.py", "0.0.0.0", "8000"]
