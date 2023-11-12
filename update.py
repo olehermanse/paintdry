@@ -37,42 +37,67 @@ def merge(a,b):
                 return b
     assert False
 
-def module_website_single(database, entry):
+def module_website_single(updater, entry):
     print(f'Website: {entry["url"]}')
-    entry = database.insert_entry(entry["url"], entry)
-    target_folder = os.path.join(database.snapshot, get_link(entry, "string_hash"))
+    entry = updater.insert_entry(entry["url"], entry)
+    target_folder = os.path.join(updater.snapshot, get_link(entry, "string_hash"))
     ensure_folder(target_folder)
     destination = os.path.join(target_folder, "index.html")
     r, out, err = shell(f'curl {entry["url"]} -o {destination}')
     r, out, err = shell(f'cd {target_folder} && prettier --no-color index.html')
     if err:
-        database.add_alert(entry, error=err)
+        updater.database.add_alert(entry, error=err)
     elif r != 0:
         sys.exit("Unknown error")
 
-def module_git_repo(database, entry):
+def module_git_repo(updater, entry):
     print(f'Git repo: {entry["url"]}')
-    database.insert_entry(entry["url"], entry)
+    updater.insert_entry(entry["url"], entry)
 
-class Database:
-    def __init__(self):
-        self.database = None
+def connect_loop():
+    while True:
         try:
             conn = psycopg2.connect("host='postgres' dbname='postgres' user='postgres' host='postgres' password='postgres'")
             print("Connected to PG")
+            return conn
         except:
-            print("I am unable to connect to the database")
+            print("Database not ready, waiting...")
+            sleep(2)
+
+class Database:
+    def __init__(self):
+        self.database_json = None
+        self.connection = connect_loop()
+
+    def _query(self, query, args=None):
+        conn = self.connection
+        cur = conn.cursor()
+        if args:
+            cur.execute(query, args)
+        else:
+            cur.execute(query)
+        conn.commit()
+        result = cur.fetchall()
+        cur.close()
+        return result
+
+    def upsert_entry(self, entry, metadata):
+        self.query()
+        pass
+
+    def upsert_link(self, a, text, b):
+        pass
 
     def _upsert(self, entry):
         assert "id" in entry
         index_id = entry["id"]
         target = {}
-        if index_id in self.database["index"]:
-            target = self.database["index"][index_id]
+        if index_id in self.database_json["index"]:
+            target = self.database_json["index"][index_id]
         new_entry = merge(target, entry)
-        self.database["index"][index_id] = new_entry
-        self.database.save()
-        return self.database["index"][index_id]
+        self.database_json["index"][index_id] = new_entry
+        self.database_json.save()
+        return self.database_json["index"][index_id]
 
     def create_related_hash(self, key, value):
         hash = sha(key)
@@ -94,9 +119,9 @@ class Database:
 
     def update_entry(self, entry):
         assert "id" in entry
-        assert entry["id"] in self.database["index"]
-        self.database["index"][entry["id"]] = entry
-        self.database.save()
+        assert entry["id"] in self.database_json["index"]
+        self.database_json["index"][entry["id"]] = entry
+        self.database_json.save()
         self._upsert(entry)
 
     def add_alert(self, entry, error):
@@ -116,6 +141,14 @@ class Database:
             entry["alerts"][error_hash]["last_seen"] = time
         self.update_entry(entry)
 
+
+class Updater:
+    def __init__(self):
+        self.database = Database()
+
+    def insert_entry(self, key, value):
+        return self.database.insert_entry(key, value)
+
     def process(self, entry):
         match entry["type"]:
             case "website_single":
@@ -131,9 +164,9 @@ class Database:
 
         # Setup state
         state = ensure_folder("./state")
-        self.database = JsonFile(os.path.join("state", "database.json"))
-        if not "index" in self.database:
-            self.database["index"] = {}
+        self.database.database_json = JsonFile(os.path.join("state", "database.json"))
+        if not "index" in self.database.database_json:
+            self.database.database_json["index"] = {}
         metadata = JsonFile(os.path.join("state", "metadata.json"))
 
         # Setup snapshots
@@ -164,19 +197,19 @@ class Database:
 
         # TODO: No need to save database every time
         #       This is mainly here for debugging / development
-        self.database.save()
-        self.database.save(os.path.join(self.snapshot, "database.json"))
+        self.database.database_json.save()
+        self.database.database_json.save(os.path.join(self.snapshot, "database.json"))
 
 def main():
     if len(sys.argv) > 1:
         assert(sys.argv[1] == "forever")
         while True:
-            db = Database()
-            db.update()
+            updater = Updater()
+            updater.update()
             sleep(10)
     else:
-        db = Database()
-        db.update()
+        updater = Updater()
+        updater.update()
 
 if __name__ == "__main__":
     main()
