@@ -91,9 +91,9 @@ class Database:
 
     def upsert_entry(self, key, metadata=None, urls=None):
         return self._query("""
-          INSERT INTO index (entry)
+          INSERT INTO index (identifier)
             VALUES(%s)
-            ON CONFLICT (entry)
+            ON CONFLICT (identifier)
             DO UPDATE SET last_seen = NOW();
         """, (key,))
 

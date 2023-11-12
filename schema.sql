@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS index (
-  entry_id serial PRIMARY KEY,
-  entry TEXT NOT NULL UNIQUE,
+  serial_id serial PRIMARY KEY,
+  identifier TEXT NOT NULL UNIQUE,
   metadata TEXT DEFAULT NULL,
   urls TEXT[] DEFAULT NULL,
   first_seen TIMESTAMP DEFAULT NOW(),
@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS index (
 );
 
 CREATE TABLE IF NOT EXISTS history (
-  entry_id serial PRIMARY KEY,
-  entry TEXT NOT NULL,
+  serial_id serial PRIMARY KEY,
+  identifier TEXT NOT NULL,
   metadata TEXT DEFAULT NULL,
   urls TEXT[] DEFAULT NULL,
   first_seen TIMESTAMP DEFAULT NOW(),
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS links (
   dst TEXT NOT NULL
 );
 
-INSERT INTO index (entry)
+INSERT INTO index (identifier)
   VALUES('test_entry')
   ON CONFLICT (entry)
   DO UPDATE SET last_seen = NOW();
