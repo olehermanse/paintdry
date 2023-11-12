@@ -24,10 +24,11 @@ services:
       dockerfile: Dockerfile-updater
     volumes:
       - ./state:/lookup/state
-    command: python update.py forever
+    command: bash updater.sh
     environment:
-      - POSTGRES_NAME=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - PGHOST=postgres
+      - PGDATABASE=postgres
+      - PGUSER=postgres
+      - PGPASSWORD=postgres
     depends_on:
       - postgres

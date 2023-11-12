@@ -8,4 +8,4 @@ WORKDIR /lookup
 COPY requirements.txt /lookup/
 RUN pip install -r requirements.txt
 COPY . /lookup/
-CMD ["python", "update.py", "forever"]
+CMD ["bash", "updater.sh"]
