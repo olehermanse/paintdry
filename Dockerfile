@@ -1,6 +1,18 @@
-FROM alpine AS build
-RUN apk update && apk upgrade
-RUN apk add --no-cache bash git openssh npm python3 py3-pip curl libpq-dev
+FROM fedora:39 AS build
+# RUN apk update && apk upgrade
+# RUN apk add --no-cache bash git openssh npm python3 py3-pip curl libpq-dev
+RUN yum update -y
+
+RUN yum install -y openssl
+RUN yum install -y gcc
+RUN yum install -y python3
+RUN yum install -y python3-pip
+RUN yum install -y python3-devel
+
+RUN yum install -y postgresql
+RUN yum install -y libpq-devel
+
+RUN yum install -y nodejs
 RUN npm install --global prettier
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
