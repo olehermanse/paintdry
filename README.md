@@ -69,19 +69,21 @@ From a security perspective, we might consider 200 normal, but 3xx, 4xx, 5xx cou
 **File - config.json**:
 
 ```
-[
-  {
-    "module": "http_status",
-    "identifier": "https://cfengine.com"
-  }
-]
+{
+  "targets": [
+    {
+      "module": "http",
+      "identifier": "https://cfengine.com"
+    }
+  ]
+}
 ```
 
 **Table - config**:
 
 ```
-     Module,           Identifier, Value
-http_status, https://cfengine.com,   200
+Module,           Identifier
+  http, https://cfengine.com
 ```
 
 **Output - module**:
@@ -90,6 +92,7 @@ http_status, https://cfengine.com,   200
 [
   {
     "module": "http",
+    "type": "status",
     "identifier": "https://cfengine.com",
     "value": "200"
   }
@@ -104,11 +107,11 @@ The module might "discover" more resources, for example if it's doing a recursiv
 **Table - resources**:
 
 ```
-     Module,           Identifier, Value, First seen,  Last seen
-http_status, https://cfengine.com,   200, 2023-01-01, 2023-09-31
+Module,   Type,           Identifier, Value, First seen,  Last seen
+http,   status, https://cfengine.com,   200, 2023-01-01, 2023-09-31
 ```
 
-In the table above, the 3 first columns are the most important ones.
+The first 4 columns come from the module.
 **First seen** and **Last seen** are just metadata, more can be added as needed.
 
 ## History of changes
@@ -120,21 +123,21 @@ In addition to this, changes are tracked in a separate table;
 **Table - history**:
 
 ```
-     Module,           Identifier, Value,       Time
-http_status, https://cfengine.com,   200, 2023-01-01
-http_status, https://cfengine.com,   200, 2023-01-02
-http_status, https://cfengine.com,   200, 2023-01-03
-http_status, https://cfengine.com,   200, 2023-01-04
-http_status, https://cfengine.com,   500, 2023-01-05
-http_status, https://cfengine.com,   500, 2023-01-06
-http_status, https://cfengine.com,   200, 2023-01-07
-http_status, https://cfengine.com,   200, 2023-01-08
-http_status, https://cfengine.com,   200, 2023-01-09
-http_status, https://cfengine.com,   200, 2023-01-10
-http_status, https://cfengine.com,   200, 2023-01-11
-http_status, https://cfengine.com,   200, 2023-01-12
-http_status, https://cfengine.com,   200, 2023-01-13
-http_status, https://cfengine.com,   200, 2023-01-14
+Module,   Type,           Identifier, Value,       Time
+  http, status, https://cfengine.com,   200, 2023-01-01
+  http, status, https://cfengine.com,   200, 2023-01-02
+  http, status, https://cfengine.com,   200, 2023-01-03
+  http, status, https://cfengine.com,   200, 2023-01-04
+  http, status, https://cfengine.com,   500, 2023-01-05
+  http, status, https://cfengine.com,   500, 2023-01-06
+  http, status, https://cfengine.com,   200, 2023-01-07
+  http, status, https://cfengine.com,   200, 2023-01-08
+  http, status, https://cfengine.com,   200, 2023-01-09
+  http, status, https://cfengine.com,   200, 2023-01-10
+  http, status, https://cfengine.com,   200, 2023-01-11
+  http, status, https://cfengine.com,   200, 2023-01-12
+  http, status, https://cfengine.com,   200, 2023-01-13
+  http, status, https://cfengine.com,   200, 2023-01-14
 ```
 
 The example above shows that the website had an internal server error on Jan 5th.

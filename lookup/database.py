@@ -41,71 +41,65 @@ class Database:
         cur.close()
         return result
 
-    def upsert_entry(self, key, metadata=None, urls=None):
+    def upsert_config(self, entry):
+        module, identifier = (
+            entry["module"],
+            entry["identifier"],
+        )
         return self._query(
             """
-          INSERT INTO index (identifier)
-            VALUES(%s)
-            ON CONFLICT (identifier)
-            DO UPDATE SET last_seen = NOW();
-        """,
-            (key,),
+            INSERT INTO config (module, identifier)
+            VALUES(%s, %s)
+            ON CONFLICT ON CONSTRAINT config_constraint
+            DO UPDATE SET last_seen = NOW()
+            """,
+            (module, identifier),
         )
 
-    def upsert_link(self, a, text, b):
-        pass
+    def upsert_resources(self, entry):
+        module, type, identifier, value = (
+            entry["module"],
+            entry["type"],
+            entry["identifier"],
+            entry["value"],
+        )
+        return self._query(
+            """
+            INSERT INTO resources (module, type, identifier, value)
+            VALUES(%s, %s, %s, %s)
+            ON CONFLICT ON CONSTRAINT resources_constraint
+            DO UPDATE SET last_seen = NOW(), value = %s
+            """,
+            (module, type, identifier, value, value),
+        )
 
-    def create_related_hash(self, key, value):
-        hash = sha(key)
-        entry = {
-            "id": hash,
-            "string": key,
-            "type": "string_hash",
-            "links": {key: "string_hash_source"},
-        }
-        self._upsert(entry)
-        return hash
-
-    def insert_entry(self, key, value):
-        value = copy.deepcopy(value)
-        value["id"] = key
-        hash = self.create_related_hash(key, value)
-        value["links"] = {hash: "string_hash"}
-        return self._upsert(value)
-
-    def get_entry(self, key):
+    def get_resource(self, identifier):
         rows = self._query(
             """
-            SELECT identifier, metadata, urls, first_seen, last_seen FROM index WHERE identifier=%s;
-        """,
-            (key,),
+            SELECT module, type, identifier, value, first_seen, last_seen
+            FROM resources
+            WHERE identifier=%s;
+            """,
+            (identifier,),
         )
         if not rows:
             return None
-        r = rows[0]
-        identifier = r[0]
-        metadata = json.loads(r[1]) if r[1] else None
-        urls = json.loads(r[2]) if r[2] else None
-        first_seen = r[3]
-        last_seen = r[4]
+        module, type, identifier, value, first_seen, last_seen = rows[0]
         return {
+            "module": module,
+            "type": type,
             "identifier": identifier,
-            "metadata": metadata,
-            "urls": urls,
+            "value": value,
             "first_seen": first_seen,
             "last_seen": last_seen,
         }
 
     def get_one_of(self, possibilities):
         for x in possibilities:
-            r = self.get_entry(x)
+            r = self.get_resource(x)
             if r:
                 return r
         return None
 
-    def get_keys(self):
-        return self._query(
-            """
-            SELECT identifier FROM index;
-        """
-        )
+    def get_resources_identifiers(self):
+        return self._query("SELECT identifier FROM resources;")

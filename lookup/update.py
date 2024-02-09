@@ -4,6 +4,7 @@ import copy
 from time import sleep
 
 import psycopg2
+import requests
 
 from utils import JsonFile, ensure_folder, ensure_json_file, shell, sha, timestamp
 from database import Database
@@ -16,24 +17,20 @@ def get_link(entry, link_name):
     raise KeyError
 
 
-def module_website_single(database, snapshot, entry):
-    print(f'Website: {entry["url"]}')
-    database.upsert_entry(entry["url"])
-    # entry = database.insert_entry(entry["url"], entry)
-    # target_folder = os.path.join(snapshot, get_link(entry, "string_hash"))
-    # ensure_folder(target_folder)
-    # destination = os.path.join(target_folder, "index.html")
-    # r, out, err = shell(f'curl {entry["url"]} -o {destination}')
-    # r, out, err = shell(f'cd {target_folder} && prettier --no-color index.html')
-    # if err:
-    #     updater.database.add_alert(entry, error=err)
-    # elif r != 0:
-    #     sys.exit("Unknown error")
+def http_status_code(url):
+    r = requests.get(url, allow_redirects=False)
+    return r.status_code
 
 
-def module_git_repo(database, snapshot, entry):
-    print(f'Git repo: {entry["url"]}')
-    database.upsert_entry(entry["url"], entry)
+def module_http(database, snapshot, entry):
+    url = entry["identifier"]
+    code = http_status_code(url)
+
+    print(f"Website: {url} -> {code}")
+
+    entry["type"] = "status"
+    entry["value"] = code
+    database.upsert_resources(entry)
 
 
 class Updater:
@@ -41,11 +38,10 @@ class Updater:
         self.database = Database()
 
     def process(self, entry):
-        match entry["type"]:
-            case "website_single":
-                module_website_single(self.database, self.snapshot, entry)
-            case "git_repo":
-                module_git_repo(self.database, self.snapshot, entry)
+        self.database.upsert_config(entry)
+        match entry["module"]:
+            case "http":
+                module_http(self.database, self.snapshot, entry)
             case other:
                 sys.exit(f"Target '{entry['type']}' in config not supported!")
 

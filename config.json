@@ -1,10 +1,20 @@
 {
   "targets": [
-    {"type": "website_single", "url": "https://mender.io"},
-    {"type": "website_single", "url": "https://cfengine.com"},
-    {"type": "website_single", "url": "https://zener.io"},
-    {"type": "website_single", "url": "https://northern.tech"},
-    {"type": "website_single", "url": "https://devicechronicle.com"},
-    {"type": "git_repo", "url": "https://github.com/cfengine/core"}
+    {
+      "module": "http",
+      "identifier": "https://cfengine.com/"
+    },
+    {
+      "module": "http",
+      "identifier": "https://mender.io"
+    },
+    {
+      "module": "http",
+      "identifier": "https://alvaldi.com"
+    },
+    {
+      "module": "http",
+      "identifier": "https://northern.tech"
+    }
   ]
 }
