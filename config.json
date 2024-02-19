@@ -2,7 +2,7 @@
   "targets": [
     {
       "module": "http",
-      "identifier": "https://cfengine.com/"
+      "identifier": "https://cfengine.com"
     },
     {
       "module": "http",

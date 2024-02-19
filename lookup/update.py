@@ -17,33 +17,77 @@ def get_link(entry, link_name):
     raise KeyError
 
 
-def http_status_code(url):
-    r = requests.get(url, allow_redirects=False)
-    return r.status_code
+def is_root_url(url):
+    return url.endswith((".io", ".com", ".tech"))
 
 
-def module_http(database, snapshot, entry):
+def is_https_url(url):
+    return url.startswith("https://")
+
+
+def https_to_http(url):
+    assert url.startswith("https://")
+    return "http://" + url[len("https://") :]
+
+
+def module_http(entry):
+    def get_status_code_and_location(url):
+        r = requests.get(url, allow_redirects=False)
+        return r.status_code, r.headers.get("Location")
+
+    results = []
+    discoveries = []
+
     url = entry["identifier"]
-    code = http_status_code(url)
-
-    print(f"Website: {url} -> {code}")
+    code, redirect_location = get_status_code_and_location(url)
 
     entry["type"] = "status"
     entry["value"] = code
-    database.upsert_resources(entry)
+    results.append(copy.deepcopy(entry))
+
+    if redirect_location:
+        print(f"Website: {url} -> {redirect_location} ({code})")
+        entry["type"] = "redirect_location"
+        entry["value"] = redirect_location
+        results.append(copy.deepcopy(entry))
+        discoveries.append(
+            {
+                "module": "http",
+                "identifier": redirect_location,
+            }
+        )
+    else:
+        print(f"Website: {url} -> {code}")
+
+    if is_https_url(url) and is_root_url(url):
+        http_entry = {}
+        http_entry["module"] = "http"
+        http_entry["identifier"] = https_to_http(url)
+        discoveries.append(http_entry)
+
+    return (results, discoveries)
 
 
 class Updater:
     def __init__(self):
         self.database = Database()
 
-    def process(self, entry):
-        self.database.upsert_config(entry)
+    def _process(self, entry):
         match entry["module"]:
             case "http":
-                module_http(self.database, self.snapshot, entry)
+                return module_http(entry)
             case other:
                 sys.exit(f"Target '{entry['type']}' in config not supported!")
+
+    def process(self, entry):
+        results, discoveries = self._process(entry)
+        for e in results:
+            self.database.upsert_resources(e)
+        for e in discoveries:
+            self.process(e)
+
+    def update_config(self, entry):
+        self.database.upsert_config(target)
 
     def update(self):
         # Read config
@@ -68,6 +112,7 @@ class Updater:
         # Actual processing
         for target in config["targets"]:
             target = copy.deepcopy(target)
+            self.update_config(target)
             self.process(target)
 
         # Commit snapshot
