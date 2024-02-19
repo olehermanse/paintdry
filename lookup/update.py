@@ -4,75 +4,23 @@ import copy
 from time import sleep
 
 import psycopg2
-import requests
 
 from utils import JsonFile, ensure_folder, ensure_json_file, shell, sha, timestamp
 from database import Database
-
-
-def get_link(entry, link_name):
-    for key, value in entry["links"].items():
-        if value == link_name:
-            return key
-    raise KeyError
-
-
-def is_root_url(url):
-    return url.endswith((".io", ".com", ".tech"))
-
-
-def is_https_url(url):
-    return url.startswith("https://")
-
-
-def https_to_http(url):
-    assert url.startswith("https://")
-    return "http://" + url[len("https://") :]
-
-
-def module_http(entry):
-    def get_status_code_and_location(url):
-        r = requests.get(url, allow_redirects=False)
-        return r.status_code, r.headers.get("Location")
-
-    results = []
-    discoveries = []
-
-    url = entry["identifier"]
-    code, redirect_location = get_status_code_and_location(url)
-
-    entry["type"] = "status"
-    entry["value"] = code
-    results.append(copy.deepcopy(entry))
-
-    if redirect_location:
-        print(f"Website: {url} -> {redirect_location} ({code})")
-        entry["type"] = "redirect_location"
-        entry["value"] = redirect_location
-        results.append(copy.deepcopy(entry))
-        discoveries.append(
-            {
-                "module": "http",
-                "identifier": redirect_location,
-            }
-        )
-    else:
-        print(f"Website: {url} -> {code}")
-
-    if is_https_url(url) and is_root_url(url):
-        http_entry = {}
-        http_entry["module"] = "http"
-        http_entry["identifier"] = https_to_http(url)
-        discoveries.append(http_entry)
-
-    return (results, discoveries)
+from modules.http import module_http
 
 
 class Updater:
     def __init__(self):
         self.database = Database()
+        self.cache = {}
 
     def _process(self, entry):
+        identifier, module = entry["identifier"], entry["module"]
+        key = module + " - " + identifier
+        if key in self.cache:
+            return ([], [])
+        self.cache[key] = True
         match entry["module"]:
             case "http":
                 return module_http(entry)
@@ -87,7 +35,7 @@ class Updater:
             self.process(e)
 
     def update_config(self, entry):
-        self.database.upsert_config(target)
+        self.database.upsert_config(entry)
 
     def update(self):
         # Read config

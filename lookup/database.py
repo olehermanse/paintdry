@@ -102,4 +102,4 @@ class Database:
         return None
 
     def get_resources_identifiers(self):
-        return self._query("SELECT identifier FROM resources;")
+        return self._query("SELECT DISTINCT identifier FROM resources;")
