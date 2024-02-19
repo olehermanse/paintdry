@@ -32,9 +32,10 @@ async function perform_search(){
     if (path != "/")
     {
         const response = await fetch("/api/search" + path);
-        const search_result = await response.json();
+        const search_result_raw = await response.text();
+        const search_result = JSON.parse(search_result_raw);
         let html = "";
-        html += "<h3>" + search_result["identifier"] + "</h3>"
+        html += "<h3>" + search_result[0]["identifier"] + "</h3>"
         if ("links" in search_result) {
             html += "<h4>Links</h4>"
             for (let key in search_result["links"]){
@@ -52,7 +53,7 @@ async function perform_search(){
             }
         }
         html += "<h4>Raw</h4>"
-        html += "<pre><code>" + JSON.stringify(search_result, null, 2) + "</pre></code>";
+        html += "<pre><code>" + search_result_raw + "</pre></code>";
 
         console.log(search_result);
         div.innerHTML = html;

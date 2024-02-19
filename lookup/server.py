@@ -1,7 +1,7 @@
 import sys
 import json
 
-from flask import Flask, abort, send_file
+from flask import Flask, abort, send_file, current_app
 from markupsafe import escape
 import psycopg2
 
@@ -40,7 +40,9 @@ def show_user_profile(path):
     result = database.get_one_of(possibilities)
     if not result:
         abort(404)
-    return result
+    return current_app.response_class(
+        json.dumps(result, indent=2), mimetype="application/json"
+    )
 
 
 @app.route("/api/list")

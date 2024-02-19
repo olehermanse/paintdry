@@ -83,16 +83,20 @@ class Database:
             (identifier,),
         )
         if not rows:
-            return None
-        module, type, identifier, value, first_seen, last_seen = rows[0]
-        return {
-            "module": module,
-            "type": type,
-            "identifier": identifier,
-            "value": value,
-            "first_seen": first_seen,
-            "last_seen": last_seen,
-        }
+            return []
+        results = []
+        for row in rows:
+            results.append(
+                {
+                    "module": row[0],
+                    "type": row[1],
+                    "identifier": row[2],
+                    "value": row[3],
+                    "first_seen": row[4].timestamp(),
+                    "last_seen": row[5].timestamp(),
+                }
+            )
+        return results
 
     def get_one_of(self, possibilities):
         for x in possibilities:
