@@ -1,4 +1,4 @@
-FROM fedora:39 AS build
+FROM fedora:40 AS build
 # RUN apk update && apk upgrade
 # RUN apk add --no-cache bash git openssh npm python3 py3-pip curl libpq-dev
 RUN yum update -y
