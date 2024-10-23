@@ -1,4 +1,4 @@
-FROM fedora:39 AS build
+FROM fedora:40 AS build
 RUN yum update -y
 RUN yum install -y python3
 RUN yum install -y python3-pip
