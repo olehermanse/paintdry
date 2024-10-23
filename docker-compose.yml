@@ -7,6 +7,13 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+  pgweb:
+    image: sosedoff/pgweb
+    command: pgweb --debug --url=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable --listen=9000
+    ports:
+      - "9000:9000"
+    depends_on:
+      - postgres
   web:
     build: .
     command: python3 lookup/server.py 0.0.0.0 8000
