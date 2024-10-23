@@ -16,7 +16,7 @@ services:
       - postgres
   web:
     build: .
-    command: python3 lookup/server.py 0.0.0.0 8000
+    command: python3 -m lookup serve
     ports:
       - "8000:8000"
     environment:

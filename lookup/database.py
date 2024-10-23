@@ -3,6 +3,7 @@ from time import sleep
 
 import psycopg2
 
+from lookup.modules.lib import ConfigTarget, Observation, Resource
 
 def connect_loop():
     while True:
@@ -41,46 +42,67 @@ class Database:
         cur.close()
         return result
 
-    def upsert_config(self, entry):
-        module, identifier = (
-            entry["module"],
-            entry["identifier"],
-        )
+    def upsert_config(self, target: ConfigTarget):
         return self._query(
             """
-            INSERT INTO config (module, identifier)
+            INSERT INTO config (module, resource)
             VALUES(%s, %s)
             ON CONFLICT ON CONSTRAINT config_constraint
             DO UPDATE SET last_seen = NOW()
             """,
-            (module, identifier),
+            (target.module, target.resource),
         )
 
-    def upsert_observations(self, entry):
-        module, type, identifier, value = (
-            entry["module"],
-            entry["type"],
-            entry["identifier"],
-            entry["value"],
-        )
+    def upsert_resource(self, resource: Resource, source):
         return self._query(
             """
-            INSERT INTO observations (module, type, identifier, value)
-            VALUES(%s, %s, %s, %s)
-            ON CONFLICT ON CONSTRAINT observations_constraint
-            DO UPDATE SET last_seen = NOW(), value = %s
+            INSERT INTO resources (modules, resource, source)
+            VALUES(%s, %s, %s)
+            ON CONFLICT ON CONSTRAINT resources_constraint
+            DO UPDATE SET last_seen = NOW()
             """,
-            (module, type, identifier, value, value),
+            (resource.modules, resource.resource, source),
         )
 
-    def get_resource(self, identifier):
+    def upsert_observations(self, observation: Observation):
+        module = observation.module
+        attribute = observation.attribute
+        resource = observation.resource
+        value = observation.value
+        timestamp = observation.timestamp
+        return self._query(
+            """
+            INSERT INTO observations (module, attribute, resource, value)
+            VALUES(%s, %s, %s, %s)
+            ON CONFLICT ON CONSTRAINT observations_constraint
+            DO UPDATE SET last_seen = %s, value = %s
+            """,
+            (module, attribute, resource, value, timestamp, value),
+        )
+
+    def get_resources(self) -> list[Resource]:
         rows = self._query(
             """
-            SELECT module, type, identifier, value, first_seen, last_seen
+            SELECT resource, modules
+            FROM resources;
+            """
+        )
+        if not rows:
+            return []
+        results = []
+        for row in rows:
+            resource = Resource(row[0], row[1])
+            results.append(resource)
+        return results
+
+    def get_observation(self, resource):
+        rows = self._query(
+            """
+            SELECT module, attribute, resource, value, first_seen, last_seen
             FROM observations
-            WHERE identifier=%s;
+            WHERE resource=%s;
             """,
-            (identifier,),
+            (resource,),
         )
         if not rows:
             return []
@@ -89,8 +111,8 @@ class Database:
             results.append(
                 {
                     "module": row[0],
-                    "type": row[1],
-                    "identifier": row[2],
+                    "attribute": row[1],
+                    "resource": row[2],
                     "value": row[3],
                     "first_seen": row[4].timestamp(),
                     "last_seen": row[5].timestamp(),
@@ -100,10 +122,10 @@ class Database:
 
     def get_one_of(self, possibilities):
         for x in possibilities:
-            r = self.get_resource(x)
+            r = self.get_observation(x)
             if r:
                 return r
         return None
 
-    def get_observations_identifiers(self):
-        return self._query("SELECT DISTINCT identifier FROM observations;")
+    def get_observations_resources(self):
+        return self._query("SELECT DISTINCT resource FROM observations;")

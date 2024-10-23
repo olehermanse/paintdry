@@ -1,226 +1,48 @@
 # SecDB
 
-## Idea
+A modular system to track security relevant data points over time.
+Not for traditional monitoring, more for things you don't expect to change at all, and you'd like a notification when they do.
+Examples: Checksums, redirects, certificates, security settings.
 
-Monitor security-relevant information with a focus on what changed and things which might indicate security issues.
-Not for monitoring numbers / statistics which change every second, more around things which change on an hourly / daily / weekly basis, for example:
+Example data:
 
-* Web page disappears without redirect
-* New script tag appears on a website
-* Link to new domain appears on a website
-* GitHub Private repo is made public
-* Git commit with PGP secret is pushed to public repo
-* New search result shows up in Shodan, showing someone who exposed a Mender login page
-* New docker image is published
-* New release on GitHub
+```SQL
+SELECT * FROM config;
+ serial_id |        resource        | module |         first_seen         |        last_changed        |         last_seen
+-----------+------------------------+--------+----------------------------+----------------------------+----------------------------
+         1 | https://cfengine.com/  | http   | 2024-10-24 13:30:06.013239 | 2024-10-24 13:30:06.013239 | 2024-10-24 13:30:28.569186
+         2 | https://mender.io/     | http   | 2024-10-24 13:30:06.020857 | 2024-10-24 13:30:06.020857 | 2024-10-24 13:30:28.572474
+         3 | https://alvaldi.com/   | http   | 2024-10-24 13:30:06.023032 | 2024-10-24 13:30:06.023032 | 2024-10-24 13:30:28.574294
+         4 | https://northern.tech/ | http   | 2024-10-24 13:30:06.026265 | 2024-10-24 13:30:06.026265 | 2024-10-24 13:30:28.576001
+(4 rows)
 
-Each of these things should be easy to implement as a _module_ (a python function), and the system should be scalable track hundreds or thousands of these _resources_.
+SELECT * FROM resources;
+ serial_id |        resource        | modules |   source    |         first_seen         |         last_seen
+-----------+------------------------+---------+-------------+----------------------------+----------------------------
+         1 | https://cfengine.com/  | {http}  | config.json | 2024-10-24 13:30:06.018109 | 2024-10-24 13:30:28.72942
+         2 | https://mender.io/     | {http}  | config.json | 2024-10-24 13:30:06.02154  | 2024-10-24 13:30:28.798459
+         3 | https://alvaldi.com/   | {http}  | config.json | 2024-10-24 13:30:06.024935 | 2024-10-24 13:30:28.854112
+         4 | https://northern.tech/ | {http}  | config.json | 2024-10-24 13:30:06.027193 | 2024-10-24 13:30:28.92181
+         5 | http://cfengine.com/   | {http}  | http        | 2024-10-24 13:30:06.211524 | 2024-10-24 13:30:29.094302
+         6 | http://mender.io/      | {http}  | http        | 2024-10-24 13:30:06.41116  | 2024-10-24 13:30:29.270675
+         7 | http://alvaldi.com/    | {http}  | http        | 2024-10-24 13:30:06.567133 | 2024-10-24 13:30:29.408296
+         8 | http://northern.tech/  | {http}  | http        | 2024-10-24 13:30:06.815025 | 2024-10-24 13:30:29.498884
+(8 rows)
 
-## Components
-
-SecDB consists of a frontend, a backend (API), a database, a configuration file, and an updater.
-
-### Frontend
-
-Currently implemented with HTML / CSS / JS.
-Might be updated to React soon.
-
-The frontend uses the backend API to show the database to the user.
-Primary functionality includes:
-
-* Searchbar, search for observations and results.
-* Single resource view with detailed information and links to other related observations.
-* History of recently changed observations, filterable by severity levels.
-
-The frontend is read-only, all updating of the data is done by the updater.
-
-### Updater
-
-Currently implemented as a python script which uses psycopg2 to update the PostgreSQL database
-
-The updater looks at the configuration file and the current state of the database.
-It then runs through all the different observations as necessary, updating their data in the database.
-
-### Backend (API)
-
-Currently implemented as a Flask API.
-
-The backend is quite simple: it queries the database for the information needed by the frontend.
-Just like the frontend, the backend is read-only, all editing of the database is done in the updater, which does not rely on the backend.
-
-### Database
-
-The database is PostgreSQL running as a separate container in a docker-compose setup.
-2 components interact with it directly - the updater and the backend.
-
-## Modules
-
-The database and the configuration file both contain lists of observations.
-Each resource is tied to a module (responsible for updating its current state) and has a unique identifier within that module.
-
-## Data / Models
-
-Each resource is modelled as an identifier (typically the URL, a commit SHA, or another type of ID), the current value, the module it belongs to, and some additional metadata.
-
-Let's take a look at a made up example.
-We'll make a module for tracking HTTP status code for a URL.
-From a security perspective, we might consider 200 normal, but 3xx, 4xx, 5xx could indicate an issue we'd like to be aware of.
-
-**File - config.json**:
-
-```
-{
-  "targets": [
-    {
-      "module": "http",
-      "identifier": "https://cfengine.com"
-    }
-  ]
-}
-```
-
-**Table - config**:
-
-```
-Module,           Identifier
-  http, https://cfengine.com
-```
-
-**Output - module**:
-
-```
-[
-  {
-    "module": "http",
-    "type": "status",
-    "identifier": "https://cfengine.com",
-    "value": "200"
-  }
-]
-```
-
-Thus, the entire responsbility of the module is to receive some instructions about what observations it should watch, and return a list of their current values.
-
-Note that the module returns a list of observations, but this doesn't have to be the same length as the input.
-The module might "discover" more observations, for example if it's doing a recursive `wget` download and wants to track each part of a web page as a separate resource.
-
-**Table - observations**:
-
-```
-Module,   Type,           Identifier, Value, First seen,  Last seen
-http,   status, https://cfengine.com,   200, 2023-01-01, 2023-09-31
-```
-
-The first 4 columns come from the module.
-**First seen** and **Last seen** are just metadata, more can be added as needed.
-
-## History of changes
-
-The database layer (not the module itself) is responsible for tracking changes in time.
-At the most basic level, this means updating the **First seen** and **Last seen** timestamps in the column above.
-In addition to this, changes are tracked in a separate table;
-
-**Table - history**:
-
-```
-Module,   Type,           Identifier, Value,       Time
-  http, status, https://cfengine.com,   200, 2023-01-01
-  http, status, https://cfengine.com,   200, 2023-01-02
-  http, status, https://cfengine.com,   200, 2023-01-03
-  http, status, https://cfengine.com,   200, 2023-01-04
-  http, status, https://cfengine.com,   500, 2023-01-05
-  http, status, https://cfengine.com,   500, 2023-01-06
-  http, status, https://cfengine.com,   200, 2023-01-07
-  http, status, https://cfengine.com,   200, 2023-01-08
-  http, status, https://cfengine.com,   200, 2023-01-09
-  http, status, https://cfengine.com,   200, 2023-01-10
-  http, status, https://cfengine.com,   200, 2023-01-11
-  http, status, https://cfengine.com,   200, 2023-01-12
-  http, status, https://cfengine.com,   200, 2023-01-13
-  http, status, https://cfengine.com,   200, 2023-01-14
-```
-
-The example above shows that the website had an internal server error on Jan 5th.
-When a website goes from 200 (success) to 500 (internal server error) this information is likely relevant for a security or operations team.
-See the section below on alerts.
-
-### Optimization - deduplicate history
-
-As seen above, every time the resource is updated, we create a history entry.
-An optimization can be to remove the redundant entries:
-
-```
-     Module,           Identifier, Value,       Time
-http_status, https://cfengine.com,   200, 2023-01-01
-http_status, https://cfengine.com,   200, 2023-01-03
-http_status, https://cfengine.com,   500, 2023-01-05
-http_status, https://cfengine.com,   500, 2023-01-06
-http_status, https://cfengine.com,   200, 2023-01-07
-http_status, https://cfengine.com,   200, 2023-01-14
-```
-
-In the table above, we've removed all entries where the value was identical both before and after.
-Thus, the only information lost is when the information was sampled in those time periods when it was unchanged.
-This optimization allows us to eliminate long streaks of identical values, keeping only the data points for when it changed (both before and after the change).
-In the example above, we reduced 14 rows to 6 rows, without losing any information we consider significant.
-
-It can also be done on insert; if there is a streak of 2 identical values and you're trying to insert a third one, update the last one instead.
-
-```
-     Module,           Identifier, Value,       Time
-http_status, https://cfengine.com,   200, 2023-01-07
-http_status, https://cfengine.com,   200, 2023-01-10
-```
-
-Trying to insert another on `200` on `2023-01-11` would result in:
-
-```
-     Module,           Identifier, Value,       Time
-http_status, https://cfengine.com,   200, 2023-01-07
-http_status, https://cfengine.com,   200, 2023-01-11
-```
-
-## Events / alerts
-
-By analyzing the history, we can generate alerts for noteworthy activities.
-The approach for creating an alert is to run some code on the before and after state, and consider whether to create an alert or not.
-This can be done as a batch or on ever insert to the changes table.
-The benefit of using the history table is that you can avoid generating duplicate alerts.
-(You generate an alert when the state changes, not ever time you observe the bad state).
-
-### Severity levels
-
-Different levels of alert severity are used:
-
-1. Critical - A severe security issue.
-2. Error - Something which is definitely a security issue (or should be treated as it).
-3. Warning - Something which seems dangerous, but might not be.
-4. Notice - Something which seems more noteworthy than other changes, but is probably not an issue.
-5. Information - The default. Most changes in values create events for informational purposes.
-   By browsing the timeline filtered at this level you can get a good overview of everything changing in your resources.
-6. Verbose - Events which are too noisy (change too often) for information.
-   If they were info, they would flood the timeline and make other events harder to see.
-7. Debug - Almost equivalent to not generating an event.
-   This event is not useful at all to users, only developers / debugging.
-
-### Timeline
-
-In the frontend you can view a timeline of all events (changes) filtered by severity.
-Example uses might be:
-
-* Filter for critical and error alerts to respond to real security issues.
-* Filter for information to see an overview of everything changing.
-* Filter for debug when you are looking into bugs in secdb
-
-### Generating events
-
-A small module (python function) is needed for generating events.
-In many cases the default one will be used (generating an information event when value changes).
-For the example above, a custom function can be used to generate a critical event when the status code changes to 500.
-
-**Table - events:**
-
-```
-     Module,           Identifier, Value,       Time, Old value,   Old time
-http_status, https://cfengine.com,   500, 2023-01-05,       200, 2023-01-04
+SELECT * FROM observations;
+ serial_id |        resource        | module |     attribute     |         value          |         first_seen         |        last_changed        |         last_seen
+-----------+------------------------+--------+-------------------+------------------------+----------------------------+----------------------------+----------------------------
+         5 | http://cfengine.com/   | http   | status_code       | 301                    | 2024-10-24 13:30:17.328378 | 2024-10-24 13:30:17.328378 | 2024-10-24 13:30:28.726141
+         6 | http://cfengine.com/   | http   | redirect_location | https://cfengine.com/  | 2024-10-24 13:30:17.331634 | 2024-10-24 13:30:17.331634 | 2024-10-24 13:30:28.726189
+         7 | http://mender.io/      | http   | status_code       | 301                    | 2024-10-24 13:30:17.394378 | 2024-10-24 13:30:17.394378 | 2024-10-24 13:30:28.795464
+         8 | http://mender.io/      | http   | redirect_location | https://mender.io/     | 2024-10-24 13:30:17.396502 | 2024-10-24 13:30:17.396502 | 2024-10-24 13:30:28.79551
+         9 | http://alvaldi.com/    | http   | status_code       | 301                    | 2024-10-24 13:30:17.457219 | 2024-10-24 13:30:17.457219 | 2024-10-24 13:30:28.849368
+        10 | http://alvaldi.com/    | http   | redirect_location | https://alvaldi.com/   | 2024-10-24 13:30:17.459663 | 2024-10-24 13:30:17.459663 | 2024-10-24 13:30:28.849412
+        11 | http://northern.tech/  | http   | status_code       | 301                    | 2024-10-24 13:30:17.509968 | 2024-10-24 13:30:17.509968 | 2024-10-24 13:30:28.918817
+        12 | http://northern.tech/  | http   | redirect_location | https://northern.tech/ | 2024-10-24 13:30:17.511439 | 2024-10-24 13:30:17.511439 | 2024-10-24 13:30:28.918903
+         1 | https://cfengine.com/  | http   | status_code       | 200                    | 2024-10-24 13:30:06.208006 | 2024-10-24 13:30:06.208006 | 2024-10-24 13:30:29.092379
+         2 | https://mender.io/     | http   | status_code       | 200                    | 2024-10-24 13:30:06.408928 | 2024-10-24 13:30:06.408928 | 2024-10-24 13:30:29.268814
+         3 | https://alvaldi.com/   | http   | status_code       | 200                    | 2024-10-24 13:30:06.565543 | 2024-10-24 13:30:06.565543 | 2024-10-24 13:30:29.406544
+         4 | https://northern.tech/ | http   | status_code       | 200                    | 2024-10-24 13:30:06.812773 | 2024-10-24 13:30:06.812773 | 2024-10-24 13:30:29.496963
+(12 rows)
 ```

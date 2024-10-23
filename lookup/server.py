@@ -2,13 +2,10 @@ import sys
 import json
 
 from flask import Flask, abort, send_file, current_app
-from markupsafe import escape
 import psycopg2
 
-from database import Database
+from lookup.database import Database
 
-hostname = sys.argv[1]
-port = int(sys.argv[2])
 
 database = Database()
 
@@ -47,7 +44,7 @@ def show_user_profile(path):
 
 @app.route("/api/list")
 def list_entries():
-    return sorted([key for key in database.get_observations_identifiers()])
+    return sorted([key for key in database.get_observations_resources()])
 
 
 @app.route("/")
@@ -55,10 +52,5 @@ def list_entries():
 def hello_world(path=None):
     return send_file("index.html")
 
-
-def main():
-    app.run(host=hostname, port=port)
-
-
-if __name__ == "__main__":
-    main()
+def start_server(host, port):
+    app.run(host=host, port=port)

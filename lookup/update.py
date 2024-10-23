@@ -5,9 +5,10 @@ from time import sleep
 
 import psycopg2
 
-from utils import JsonFile, ensure_folder, ensure_json_file, shell, sha, timestamp
-from database import Database
-from modules.http import module_http
+from lookup.utils import JsonFile, ensure_folder, ensure_json_file, shell, sha, timestamp
+from lookup.database import Database
+from lookup.modules.http import HTTPModule
+from lookup.modules.lib import clear_get_cache, Discovery, Observation, Resource, ConfigTarget
 
 
 class Updater:
@@ -15,29 +16,41 @@ class Updater:
         self.database = Database()
         self.cache = {}
 
-    def _process(self, entry):
-        identifier, module = entry["identifier"], entry["module"]
+    def _process(self, identifier: str, module: str) -> tuple[list[Observation],list[Discovery]]:
         key = module + " - " + identifier
         if key in self.cache:
             return ([], [])
         self.cache[key] = True
-        match entry["module"]:
-            case "http":
-                return module_http(entry)
-            case other:
-                sys.exit(f"Target '{entry['type']}' in config not supported!")
+        resource = Resource(identifier, [module])
+        for module in resource.modules:
+            match module:
+                case "http":
+                    return HTTPModule.process(resource)
+                case other:
+                    sys.exit(f"Target '{module}' not supported!")
+        return ([], [])
 
-    def process(self, entry):
-        results, discoveries = self._process(entry)
-        for e in results:
-            self.database.upsert_observations(e)
-        for e in discoveries:
-            self.process(e)
+    def process_discovery(self, discovery: Discovery):
+        print("Discovery: " + discovery.resource)
+        self.database.upsert_resource(Resource.from_discovery(discovery), discovery.source)
 
-    def update_config(self, entry):
-        self.database.upsert_config(entry)
+    def process_resource(self, entry: Resource):
+        resource = entry.resource
+        for module in entry.modules:
+            results, discoveries = self._process(resource, module)
+            for result in results:
+                self.database.upsert_observations(result)
+            for e in discoveries:
+                self.process_discovery(e)
+
+    def update_config(self, target: ConfigTarget):
+        self.database.upsert_config(target)
+        resource = Resource.from_target(target)
+        self.database.upsert_resource(resource, "config.json")
 
     def update(self):
+        clear_get_cache()
+
         # Read config
         config = JsonFile("config.json")
 
@@ -59,27 +72,23 @@ class Updater:
 
         # Actual processing
         for target in config["targets"]:
-            target = copy.deepcopy(target)
+            target = ConfigTarget(target["resource"], target["module"])
             self.update_config(target)
-            self.process(target)
+
+        for resource in self.database.get_resources():
+            self.process_resource(resource)
 
         # Commit snapshot
         metadata["last_update"] = {"time": time, "name": snapshot_name, "seq": seq}
         metadata.save()
         metadata.save(os.path.join(self.snapshot, "metadata.json"))
 
-
-def main():
-    if len(sys.argv) > 1:
-        assert sys.argv[1] == "forever"
-        while True:
-            updater = Updater()
-            updater.update()
-            sleep(10)
-    else:
+def forever():
+    while True:
         updater = Updater()
         updater.update()
+        sleep(10)
 
-
-if __name__ == "__main__":
-    main()
+def once():
+    updater = Updater()
+    updater.update()

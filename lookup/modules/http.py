@@ -1,93 +1,45 @@
-import copy
+from lookup.modules.lib import cached_http_get, Observation, Resource, Discovery
+from lookup.utils import is_root_url, is_https_url, https_to_http, normalize_url
 
-import requests
+class HTTPModule:
+    @staticmethod
+    def process(resource: Resource) -> tuple[list[Observation],list[Discovery]]:
+         return (HTTPModule.observe(resource), HTTPModule.discover(resource))
 
+    @staticmethod
+    def discover(resource: Resource) -> list[Discovery]:
+        discoveries = []
+        url = normalize_url(resource.resource)
+        while url.endswith("/"):
+            url = url[0:-1]
+        response = cached_http_get(url)
 
-class HTTPGet:
-    """Abstraction / encapsulation of requests.get()
+        # Discover a redirect:
+        location = response.redirect_location
+        if location:
+            discoveries.append(Discovery(location, ["http"], "http"))
 
-    Expose only the properties we actually need.
-    """
+        # Discover the http version of an HTTPS URL:
+        if is_https_url(url) and is_root_url(url):
+            http_url = normalize_url(https_to_http(url))
+            discoveries.append(Discovery(http_url, ["http"], "http"))
 
-    def __init__(self, url):
-        self._r = requests.get(url, allow_redirects=False)
-        self._url = url
+        return discoveries
 
-    @property
-    def url(self):
-        return self._url
+    @staticmethod
+    def observe(resource: Resource) -> list[Observation]:
+        results = []
+        url = normalize_url(resource.resource)
+        while url.endswith("/"):
+            url = url[0:-1]
+        response = cached_http_get(url)
+        results.append(Observation(url, "http", "status_code", response.status_code))
 
-    @property
-    def status_code(self):
-        return self._r.status_code
+        location = response.redirect_location
+        if location:
+            print(f"Website: {url} -> {location} ({response.status_code})")
+            results.append(Observation(url, "http", "redirect_location", location))
+        else:
+            print(f"Website: {url} -> {response.status_code}")
 
-    @property
-    def redirect_location(self):
-        return self._r.headers.get("Location")
-
-
-def strip_prefix(inp, options, n):
-    if n == 0:
-        return inp
-    for prefix in options:
-        if inp.startswith(prefix):
-            return strip_prefix(inp[len(prefix) :], options, n - 1)
-    return inp
-
-
-def simplify_url(url):
-    if url.endswith("/"):
-        return simplify_url(url[0:-1])
-    return strip_prefix(url, ("http://", "https://"), 1)
-
-
-def is_root_url(url):
-    return "/" not in url
-
-
-def is_https_url(url):
-    return url.startswith("https://")
-
-
-def https_to_http(url):
-    assert url.startswith("https://")
-    return "http://" + url[len("https://") :]
-
-
-def module_http(entry):
-    def get_status_code_and_location(url):
-        r = requests.get(url, allow_redirects=False)
-        return r.status_code, r.headers.get("Location")
-
-    results = []
-    discoveries = []
-
-    while entry["identifier"].endswith("/"):
-        entry["identifier"] = entry["identifier"][0:-1]
-    r = HTTPGet(entry["identifier"])
-
-    entry["type"] = "status"
-    entry["value"] = r.status_code
-    results.append(copy.deepcopy(entry))
-
-    if r.redirect_location:
-        print(f"Website: {r.url} -> {r.redirect_location} ({r.status_code})")
-        entry["type"] = "redirect_location"
-        entry["value"] = r.redirect_location
-        results.append(copy.deepcopy(entry))
-        discoveries.append(
-            {
-                "module": "http",
-                "identifier": redirect_location,
-            }
-        )
-    else:
-        print(f"Website: {r.url} -> {r.status_code}")
-
-    if is_https_url(r.url) and is_root_url(r.url):
-        http_entry = {}
-        http_entry["module"] = "http"
-        http_entry["identifier"] = https_to_http(r.url)
-        discoveries.append(http_entry)
-
-    return (results, discoveries)
+        return results

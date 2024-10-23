@@ -5,7 +5,30 @@ import copy
 import subprocess
 import hashlib
 import datetime
+from urllib.parse import urlparse
 
+
+def is_root_url(url: str):
+    res = urlparse(url)
+    return res.path == "/" or res.path == ""
+
+
+def normalize_url(url: str) -> str:
+    if not url.startswith(("http://", "https://")):
+        return url
+    if not is_root_url(url):
+        return url
+    while url.endswith("/"):
+        url = url[0:-1]
+    return url + "/"
+
+def is_https_url(url):
+    return url.startswith("https://")
+
+
+def https_to_http(url):
+    assert url.startswith("https://")
+    return "http://" + url[len("https://") :]
 
 def timestamp():
     return datetime.datetime.now().isoformat()

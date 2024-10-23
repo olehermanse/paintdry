@@ -35,7 +35,7 @@ async function perform_search(){
         const search_result_raw = await response.text();
         const search_result = JSON.parse(search_result_raw);
         let html = "";
-        html += "<h3>" + search_result[0]["identifier"] + "</h3>"
+        html += "<h3>" + search_result[0]["resource"] + "</h3>"
         if ("links" in search_result) {
             html += "<h4>Links</h4>"
             for (let key in search_result["links"]){

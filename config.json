@@ -2,19 +2,19 @@
   "targets": [
     {
       "module": "http",
-      "identifier": "https://cfengine.com"
+      "resource": "https://cfengine.com"
     },
     {
       "module": "http",
-      "identifier": "https://mender.io"
+      "resource": "https://mender.io"
     },
     {
       "module": "http",
-      "identifier": "https://alvaldi.com"
+      "resource": "https://alvaldi.com"
     },
     {
       "module": "http",
-      "identifier": "https://northern.tech"
+      "resource": "https://northern.tech"
     }
   ]
 }
