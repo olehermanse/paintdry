@@ -28,9 +28,9 @@ Might be updated to React soon.
 The frontend uses the backend API to show the database to the user.
 Primary functionality includes:
 
-* Searchbar, search for resources and results.
-* Single resource view with detailed information and links to other related resources.
-* History of recently changed resources, filterable by severity levels.
+* Searchbar, search for observations and results.
+* Single resource view with detailed information and links to other related observations.
+* History of recently changed observations, filterable by severity levels.
 
 The frontend is read-only, all updating of the data is done by the updater.
 
@@ -39,7 +39,7 @@ The frontend is read-only, all updating of the data is done by the updater.
 Currently implemented as a python script which uses psycopg2 to update the PostgreSQL database
 
 The updater looks at the configuration file and the current state of the database.
-It then runs through all the different resources as necessary, updating their data in the database.
+It then runs through all the different observations as necessary, updating their data in the database.
 
 ### Backend (API)
 
@@ -55,7 +55,7 @@ The database is PostgreSQL running as a separate container in a docker-compose s
 
 ## Modules
 
-The database and the configuration file both contain lists of resources.
+The database and the configuration file both contain lists of observations.
 Each resource is tied to a module (responsible for updating its current state) and has a unique identifier within that module.
 
 ## Data / Models
@@ -99,12 +99,12 @@ Module,           Identifier
 ]
 ```
 
-Thus, the entire responsbility of the module is to receive some instructions about what resources it should watch, and return a list of their current values.
+Thus, the entire responsbility of the module is to receive some instructions about what observations it should watch, and return a list of their current values.
 
-Note that the module returns a list of resources, but this doesn't have to be the same length as the input.
-The module might "discover" more resources, for example if it's doing a recursive `wget` download and wants to track each part of a web page as a separate resource.
+Note that the module returns a list of observations, but this doesn't have to be the same length as the input.
+The module might "discover" more observations, for example if it's doing a recursive `wget` download and wants to track each part of a web page as a separate resource.
 
-**Table - resources**:
+**Table - observations**:
 
 ```
 Module,   Type,           Identifier, Value, First seen,  Last seen

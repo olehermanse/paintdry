@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS config (
     CONSTRAINT config_constraint UNIQUE (module, identifier)
 );
 
-CREATE TABLE IF NOT EXISTS resources (
+CREATE TABLE IF NOT EXISTS observations (
     serial_id serial PRIMARY KEY,
     module TEXT NOT NULL,
     type TEXT NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS resources (
     value TEXT NOT NULL,
     first_seen TIMESTAMP DEFAULT NOW(),
     last_seen TIMESTAMP DEFAULT NOW(),
-    CONSTRAINT resources_constraint UNIQUE (module, type, identifier)
+    CONSTRAINT observations_constraint UNIQUE (module, type, identifier)
 );
 
 CREATE TABLE IF NOT EXISTS history (

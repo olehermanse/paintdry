@@ -3,7 +3,7 @@ psql -f schema.sql
 echo "CONFIG:"
 psql -c "SELECT * FROM config;"
 echo "RESOURCES:"
-psql -c "SELECT * FROM resources;"
+psql -c "SELECT * FROM observations;"
 echo "HISTORY:"
 psql -c "SELECT * FROM history;"
 echo "EVENTS:"

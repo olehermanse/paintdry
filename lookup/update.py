@@ -30,7 +30,7 @@ class Updater:
     def process(self, entry):
         results, discoveries = self._process(entry)
         for e in results:
-            self.database.upsert_resources(e)
+            self.database.upsert_observations(e)
         for e in discoveries:
             self.process(e)
 

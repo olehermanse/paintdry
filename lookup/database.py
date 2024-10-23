@@ -56,7 +56,7 @@ class Database:
             (module, identifier),
         )
 
-    def upsert_resources(self, entry):
+    def upsert_observations(self, entry):
         module, type, identifier, value = (
             entry["module"],
             entry["type"],
@@ -65,9 +65,9 @@ class Database:
         )
         return self._query(
             """
-            INSERT INTO resources (module, type, identifier, value)
+            INSERT INTO observations (module, type, identifier, value)
             VALUES(%s, %s, %s, %s)
-            ON CONFLICT ON CONSTRAINT resources_constraint
+            ON CONFLICT ON CONSTRAINT observations_constraint
             DO UPDATE SET last_seen = NOW(), value = %s
             """,
             (module, type, identifier, value, value),
@@ -77,7 +77,7 @@ class Database:
         rows = self._query(
             """
             SELECT module, type, identifier, value, first_seen, last_seen
-            FROM resources
+            FROM observations
             WHERE identifier=%s;
             """,
             (identifier,),
@@ -105,5 +105,5 @@ class Database:
                 return r
         return None
 
-    def get_resources_identifiers(self):
-        return self._query("SELECT DISTINCT identifier FROM resources;")
+    def get_observations_identifiers(self):
+        return self._query("SELECT DISTINCT identifier FROM observations;")

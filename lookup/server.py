@@ -47,7 +47,7 @@ def show_user_profile(path):
 
 @app.route("/api/list")
 def list_entries():
-    return sorted([key for key in database.get_resources_identifiers()])
+    return sorted([key for key in database.get_observations_identifiers()])
 
 
 @app.route("/")
