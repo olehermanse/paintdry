@@ -19,5 +19,8 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /lookup
 COPY requirements.txt /lookup/
 RUN pip install -r requirements.txt
-COPY . /lookup/
+COPY ./updater.sh /lookup/updater.sh
+COPY ./schema.sql /lookup/schema.sql
+COPY ./config.json /lookup/config.json
+COPY ./lookup /lookup/lookup
 CMD ["bash", "updater.sh"]
