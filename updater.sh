@@ -12,6 +12,6 @@ while true; do
   psql -c "SELECT * FROM history;"
   echo "SELECT * FROM events;"
   psql -c "SELECT * FROM events;"
-  python3 -m lookup update-once
+  python3 -m secdb update-once
   sleep 10
 done

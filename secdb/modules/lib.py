@@ -3,7 +3,7 @@ import datetime
 from typing import Any
 import requests
 
-from lookup.utils import normalize_url
+from secdb.utils import normalize_url
 
 
 class ConfigTarget:

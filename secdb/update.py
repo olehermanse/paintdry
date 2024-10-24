@@ -5,10 +5,10 @@ from time import sleep
 
 import psycopg2
 
-from lookup.utils import JsonFile, ensure_folder, ensure_json_file, shell, sha, timestamp
-from lookup.database import Database
-from lookup.modules.http import HTTPModule
-from lookup.modules.lib import clear_get_cache, Discovery, Observation, Resource, ConfigTarget
+from secdb.utils import JsonFile, ensure_folder, ensure_json_file, shell, sha, timestamp
+from secdb.database import Database
+from secdb.modules.http import HTTPModule
+from secdb.modules.lib import clear_get_cache, Discovery, Observation, Resource, ConfigTarget
 
 
 class Updater:

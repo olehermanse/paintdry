@@ -5,7 +5,7 @@ from flask import Flask, abort, send_file, current_app, send_from_directory
 from flask.helpers import redirect
 import psycopg2
 
-from lookup.database import Database
+from secdb.database import Database
 
 
 database = Database()

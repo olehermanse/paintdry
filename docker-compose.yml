@@ -16,7 +16,7 @@ services:
       - postgres
   web:
     build: .
-    command: python3 -m lookup serve
+    command: python3 -m secdb serve
     ports:
       - "8000:8000"
     environment:
@@ -30,7 +30,7 @@ services:
       context: .
       dockerfile: Dockerfile-updater
     volumes:
-      - ./state:/lookup/state
+      - ./state:/secdb/state
     command: bash updater.sh
     environment:
       - PGHOST=postgres

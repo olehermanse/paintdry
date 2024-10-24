@@ -1,5 +1,5 @@
-from lookup.modules.lib import cached_http_get, Observation, Resource, Discovery
-from lookup.utils import is_root_url, is_https_url, https_to_http, normalize_url
+from secdb.modules.lib import cached_http_get, Observation, Resource, Discovery
+from secdb.utils import is_root_url, is_https_url, https_to_http, normalize_url
 
 class HTTPModule:
     @staticmethod

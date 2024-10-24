@@ -16,11 +16,11 @@ RUN yum install -y nodejs
 RUN npm install --global prettier
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-WORKDIR /lookup
-COPY requirements.txt /lookup/
+WORKDIR /secdb
+COPY requirements.txt /secdb/
 RUN pip install -r requirements.txt
-COPY ./updater.sh /lookup/updater.sh
-COPY ./schema.sql /lookup/schema.sql
-COPY ./config.json /lookup/config.json
-COPY ./lookup /lookup/lookup
+COPY ./updater.sh /secdb/updater.sh
+COPY ./schema.sql /secdb/schema.sql
+COPY ./config.json /secdb/config.json
+COPY ./secdb /secdb/secdb
 CMD ["bash", "updater.sh"]
