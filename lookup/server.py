@@ -1,7 +1,8 @@
 import sys
 import json
 
-from flask import Flask, abort, send_file, current_app
+from flask import Flask, abort, send_file, current_app, send_from_directory
+from flask.helpers import redirect
 import psycopg2
 
 from lookup.database import Database
@@ -46,11 +47,27 @@ def show_user_profile(path):
 def list_entries():
     return sorted([key for key in database.get_observations_resources()])
 
+@app.route("/api/resources")
+def api_resources():
+    return database.get_resources()
 
 @app.route("/")
+def redirect_to_ui():
+    return redirect("/ui/")
+
+
+@app.route("/ui/")
+@app.route("/ui/<path:path>")
+def ui(path=None):
+    return send_from_directory('dist', "index.html")
+
+
 @app.route("/<path:path>")
-def hello_world(path=None):
-    return send_file("index.html")
+def index(path=None):
+    if not path or path == "/":
+        path = "index.html"
+    return send_from_directory('dist', path)
+
 
 def start_server(host, port):
     app.run(host=host, port=port)

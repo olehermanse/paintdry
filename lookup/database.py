@@ -83,7 +83,7 @@ class Database:
     def get_resources(self) -> list[Resource]:
         rows = self._query(
             """
-            SELECT resource, modules
+            SELECT id, resource, modules, source, first_seen, last_seen
             FROM resources;
             """
         )
@@ -91,7 +91,7 @@ class Database:
             return []
         results = []
         for row in rows:
-            resource = Resource(row[0], row[1])
+            resource = Resource(id=row[0], resource=row[1], modules=row[2], source=row[3], first_seen=row[4], last_seen=row[5])
             results.append(resource)
         return results
 

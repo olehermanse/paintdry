@@ -23,3 +23,6 @@ go.work
 /data/
 /state/
 __pycache__
+
+gui/node_modules
+gui/dist

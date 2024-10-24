@@ -8,7 +8,7 @@ Example data:
 
 ```SQL
 SELECT * FROM config;
- serial_id |        resource        | module |         first_seen         |        last_changed        |         last_seen
+        id |        resource        | module |         first_seen         |        last_changed        |         last_seen
 -----------+------------------------+--------+----------------------------+----------------------------+----------------------------
          1 | https://cfengine.com/  | http   | 2024-10-24 13:30:06.013239 | 2024-10-24 13:30:06.013239 | 2024-10-24 13:30:28.569186
          2 | https://mender.io/     | http   | 2024-10-24 13:30:06.020857 | 2024-10-24 13:30:06.020857 | 2024-10-24 13:30:28.572474
@@ -17,7 +17,7 @@ SELECT * FROM config;
 (4 rows)
 
 SELECT * FROM resources;
- serial_id |        resource        | modules |   source    |         first_seen         |         last_seen
+        id |        resource        | modules |   source    |         first_seen         |         last_seen
 -----------+------------------------+---------+-------------+----------------------------+----------------------------
          1 | https://cfengine.com/  | {http}  | config.json | 2024-10-24 13:30:06.018109 | 2024-10-24 13:30:28.72942
          2 | https://mender.io/     | {http}  | config.json | 2024-10-24 13:30:06.02154  | 2024-10-24 13:30:28.798459
@@ -30,7 +30,7 @@ SELECT * FROM resources;
 (8 rows)
 
 SELECT * FROM observations;
- serial_id |        resource        | module |     attribute     |         value          |         first_seen         |        last_changed        |         last_seen
+        id |        resource        | module |     attribute     |         value          |         first_seen         |        last_changed        |         last_seen
 -----------+------------------------+--------+-------------------+------------------------+----------------------------+----------------------------+----------------------------
          5 | http://cfengine.com/   | http   | status_code       | 301                    | 2024-10-24 13:30:17.328378 | 2024-10-24 13:30:17.328378 | 2024-10-24 13:30:28.726141
          6 | http://cfengine.com/   | http   | redirect_location | https://cfengine.com/  | 2024-10-24 13:30:17.331634 | 2024-10-24 13:30:17.331634 | 2024-10-24 13:30:28.726189

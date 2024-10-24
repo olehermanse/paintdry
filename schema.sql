@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS config (
-    serial_id serial PRIMARY KEY,
+    id serial PRIMARY KEY,
     resource TEXT NOT NULL,
     module TEXT NOT NULL,
     first_seen TIMESTAMP DEFAULT NOW(),
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS config (
 );
 
 CREATE TABLE IF NOT EXISTS resources (
-    serial_id serial PRIMARY KEY,
+    id serial PRIMARY KEY,
     resource TEXT NOT NULL,
     modules TEXT[] NOT NULL,
     source TEXT NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS resources (
 );
 
 CREATE TABLE IF NOT EXISTS observations (
-    serial_id serial PRIMARY KEY,
+    id serial PRIMARY KEY,
     resource TEXT NOT NULL,
     module TEXT NOT NULL,
     attribute TEXT NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS observations (
 );
 
 CREATE TABLE IF NOT EXISTS history (
-    serial_id serial PRIMARY KEY,
+    id serial PRIMARY KEY,
     resource TEXT NOT NULL,
     module TEXT NOT NULL,
     attribute TEXT NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS history (
 );
 
 CREATE TABLE IF NOT EXISTS events (
-    serial_id serial PRIMARY KEY,
+    id serial PRIMARY KEY,
     ts TIMESTAMP,
     resource TEXT NOT NULL,
     module TEXT NOT NULL,
