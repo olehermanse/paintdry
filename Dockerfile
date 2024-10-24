@@ -1,9 +1,11 @@
+# syntax=docker/dockerfile:1.7-labs
 FROM node:18 AS build
 WORKDIR /lookup/gui/
 COPY ./gui/package.json /lookup/gui/package.json
 COPY ./gui/package-lock.json /lookup/gui/package-lock.json
 RUN npm ci
-COPY ./gui/ /lookup/gui/
+COPY --exclude=node_modules --exclude=*.md ./gui/ /lookup/gui/
+RUN rm -rf /lookup/gui/dist
 RUN npm run build
 
 FROM fedora:40 AS serve

@@ -7,24 +7,23 @@ const default_rows: GridRowsProp = [
   {
     first_seen: null,
     last_seen: null,
-    modules: ["http"],
-    resource: "https://example.com/",
-    id: "Loading",
+    modules: ["Loading..."],
+    resource: "Loading...",
+    id: "Loading...",
     source: null,
   },
 ];
 
 const columns: GridColDef[] = [
-  { field: "id", headerName: "id"},
-  { field: "resource", headerName: "resource"},
-  { field: "modules", headerName: "modules"},
-  { field: "source", headerName: "source"},
-  { field: "first_seen", headerName: "first_seen"},
-  { field: "last_seen", headerName: "last_seen"},
+  { field: "id", headerName: "id", width: 60 },
+  { field: "resource", headerName: "resource", width: 200 },
+  { field: "modules", headerName: "modules", width: 200 },
+  { field: "source", headerName: "source", width: 200 },
+  { field: "first_seen", headerName: "first_seen", width: 300 },
+  { field: "last_seen", headerName: "last_seen", width: 300 },
 ];
 
-interface Resource
-{
+interface Resource {
   first_seen: string | null;
   last_seen: string | null;
   modules: string[];
@@ -44,29 +43,10 @@ function fix_ids(data: Resource[]) {
 
 async function fetch_table_data() {
   const response = await fetch("/api/resources");
-  const json = await response.json();
-  console.log(json);
-  const data = [
-    {
-      first_seen: null,
-      last_seen: null,
-      modules: ["http"],
-      resource: "https://example.com/",
-      id: null,
-      source: null,
-    },
-    {
-      first_seen: null,
-      last_seen: null,
-      modules: ["http"],
-      resource: "https://example.com/",
-      id: null,
-      source: null,
-    },
-  ];
-  fix_ids(data);
-
-  return data;
+  const resources: Resource[] = await response.json();
+  console.log(resources);
+  fix_ids(resources);
+  return resources;
 }
 
 function ResourcesView() {
@@ -78,7 +58,7 @@ function ResourcesView() {
   return (
     <>
       <h1>Resources</h1>
-      <div style={{ height: 300, width: "100%" }}>
+      <div style={{ width: "100%" }}>
         <DataGrid rows={rows} columns={columns} />
       </div>
     </>
