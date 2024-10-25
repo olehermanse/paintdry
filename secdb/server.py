@@ -47,9 +47,16 @@ def show_user_profile(path):
 def list_entries():
     return sorted([key for key in database.get_observations_resources()])
 
+
 @app.route("/api/resources")
 def api_resources():
     return database.get_resources()
+
+
+@app.route("/api/observations")
+def api_observations():
+    return database.get_observations()
+
 
 @app.route("/")
 def redirect_to_ui():
@@ -59,14 +66,14 @@ def redirect_to_ui():
 @app.route("/ui/")
 @app.route("/ui/<path:path>")
 def ui(path=None):
-    return send_from_directory('dist', "index.html")
+    return send_from_directory("dist", "index.html")
 
 
 @app.route("/<path:path>")
 def index(path=None):
     if not path or path == "/":
         path = "index.html"
-    return send_from_directory('dist', path)
+    return send_from_directory("dist", path)
 
 
 def start_server(host, port):

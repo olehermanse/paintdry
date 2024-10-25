@@ -15,7 +15,7 @@ const default_rows: GridRowsProp = [
 ];
 
 const columns: GridColDef[] = [
-  { field: "id", headerName: "id", width: 60 },
+  { field: "id", headerName: "id", width: 80 },
   { field: "resource", headerName: "resource", width: 200 },
   { field: "modules", headerName: "modules", width: 200 },
   { field: "source", headerName: "source", width: 200 },
@@ -58,7 +58,7 @@ function ResourcesView() {
   return (
     <>
       <h1>Resources</h1>
-      <div style={{ width: "100%" }}>
+      <div style={{ height: "70vh", width: "100%" }}>
         <DataGrid rows={rows} columns={columns} />
       </div>
     </>

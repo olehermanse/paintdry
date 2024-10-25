@@ -1,5 +1,6 @@
 import './App.css'
 import ResourcesView from './ResourcesView';
+import ObservationsView from './ObservationsView';
 import {
   BrowserRouter,
   Routes,
@@ -15,6 +16,7 @@ function App() {
       <Route path="/ui" element={<Layout />}>
         <Route index element={<ResourcesView />} />
         <Route path="/ui/resources" element={<ResourcesView />} />
+        <Route path="/ui/observations" element={<ObservationsView />} />
         <Route path="/ui/other" element={<div> Other option </div>} />
         <Route path="/ui/other/:id" element={<div> Other option </div>} />
         <Route path="*" element={<div> Other option </div>} />

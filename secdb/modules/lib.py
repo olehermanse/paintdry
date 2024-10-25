@@ -21,14 +21,61 @@ class Discovery:
         self.source = source
         self.timestamp = datetime.datetime.now()
 
+class Observation(dict):
+    def __init__(
+        self,
+        resource: str,
+        module: str,
+        attribute: str,
+        value: str,
+        id=None,
+        first_seen=None,
+        last_changed=None,
+        last_seen=None,
+        timestamp=None,
+    ):
+        if not timestamp:
+            timestamp = datetime.datetime.now()
+        dict.__init__(
+            self,
+            resource=normalize_url(resource),
+            module=module,
+            attribute=attribute,
+            value=str(value),
+            id=id,
+            first_seen=first_seen,
+            last_changed=last_changed,
+            last_seen=last_seen,
+            timestamp=timestamp
+        )
 
-class Observation:
-    def __init__(self, resource: str, module: str, attribute: str, value: str):
-        self.resource = normalize_url(resource)
-        self.module = module
-        self.attribute = attribute
-        self.value = str(value)
-        self.timestamp = datetime.datetime.now()
+    @property
+    def resource(self):
+        return self["resource"]
+
+    @property
+    def module(self):
+        return self["module"]
+
+    @property
+    def attribute(self):
+        return self["attribute"]
+
+    @property
+    def value(self):
+        return self["value"]
+
+    @property
+    def timestamp(self):
+        return self["timestamp"]
+
+    def __setattr__(self, name: str, value: Any, /) -> None:
+        if name not in self:
+            raise AttributeError
+        return super().__setattr__(name, value)
+
+    def __getattribute__(self, name: str, /) -> Any:
+        return super().__getattribute__(name)
 
 
 class Resource(dict):

@@ -5,6 +5,7 @@ import psycopg2
 
 from secdb.modules.lib import ConfigTarget, Observation, Resource
 
+
 def connect_loop():
     while True:
         try:
@@ -91,8 +92,41 @@ class Database:
             return []
         results = []
         for row in rows:
-            resource = Resource(id=row[0], resource=row[1], modules=row[2], source=row[3], first_seen=row[4], last_seen=row[5])
+            resource = Resource(
+                id=row[0],
+                resource=row[1],
+                modules=row[2],
+                source=row[3],
+                first_seen=row[4],
+                last_seen=row[5],
+            )
             results.append(resource)
+        return results
+
+    def _select_dicts(self, table: str, keys: list[str]) -> list[dict]:
+        query = f"""
+        SELECT {', '.join(keys)}
+        FROM {table};
+        """
+        rows = self._query(query)
+        if not rows:
+            return []
+        results = []
+        for row in rows:
+            d = {}
+            for key, value in zip(keys, row):
+                d[key] = value
+            results.append(d)
+        return results
+
+    def get_observations(self) -> list[Observation]:
+        objects = self._select_dicts("observations", ["id", "resource", "module", "attribute", "value", "first_seen", "last_changed", "last_seen"])
+        if not objects:
+            return []
+        results = []
+        for object in objects:
+            result = Observation(**object)
+            results.append(result)
         return results
 
     def get_observation(self, resource):
