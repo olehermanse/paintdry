@@ -9,7 +9,7 @@ function a11yProps(index: number) {
   };
 }
 
-const tabs = ["resources", "observations", "other"];
+const tabs = ["resources", "observations", "config"];
 
 function choose_index(value: string): number {
   for (let i = 0; i < tabs.length; i++){
@@ -45,7 +45,7 @@ const Layout = () => {
           <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
             <Tab label="Resources" {...a11yProps(0)} />
             <Tab label="Observations" {...a11yProps(1)} />
-            <Tab label="Other" {...a11yProps(2)} />
+            <Tab label="Config" {...a11yProps(2)} />
           </Tabs>
         </Box>
       </Box>

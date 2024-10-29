@@ -60,6 +60,18 @@ def api_get_resource(id):
         abort(404)
     return result
 
+@app.route("/api/config")
+def api_config():
+    return database.get_config()
+
+
+@app.route("/api/config/<int:id>")
+def api_get_config(id):
+    result = database.get_config(id)
+    if not result:
+        abort(404)
+    return result
+
 
 @app.route("/api/observations")
 def api_observations():

@@ -18,10 +18,6 @@ async function fetch_table_data(id: string) {
   return resource
 }
 
-export interface ResourceProps {
-  id: string;
-}
-
 function SingleResourceView() {
   const navigate = useNavigate();
   const { id } = useParams();

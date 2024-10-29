@@ -1,4 +1,5 @@
 import json
+from os import abort
 from time import sleep
 
 import psycopg2
@@ -129,24 +130,56 @@ class Database:
             results.append(resource)
         return results
 
-    def _select_dicts(self, table: str, keys: list[str]) -> list[dict]:
+    def _select(self, table: str, columns: list[str], where: dict | None = None ) -> list[dict]:
+        where_part = ""
+        where_keys = []
+        where_values = []
+        if where:
+            for key, value in where.items():
+                where_keys.append(key)
+                where_values.append(value)
+            strings = [f"{key}=%s" for key in where_keys]
+            where_part = "WHERE " + " AND ".join(strings)
+
         query = f"""
-        SELECT {', '.join(keys)}
-        FROM {table};
+        SELECT {', '.join(columns)}
+        FROM {table}
+        {where_part}
+        ;
         """
-        rows = self._query(query)
+
+        rows = self._query(query, where_values) if where else self._query(query)
         if not rows:
             return []
         results = []
         for row in rows:
             d = {}
-            for key, value in zip(keys, row):
+            for key, value in zip(columns, row):
                 d[key] = value
             results.append(d)
         return results
 
+    def get_config(self, id: str | None = None) -> list[ConfigTarget]:
+        columns = [
+            "id" ,
+            "resource",
+            "module" ,
+            "first_seen",
+            "last_seen",
+        ]
+        objects = self._select("config", columns, {"id": id} if id else None)
+        if id and not objects:
+            abort(404);
+        if not objects:
+            return []
+        results = []
+        for object in objects:
+            result = ConfigTarget(**object)
+            results.append(result)
+        return results
+
     def get_observations(self) -> list[Observation]:
-        objects = self._select_dicts("observations", ["id", "resource", "module", "attribute", "value", "first_seen", "last_changed", "last_seen"])
+        objects = self._select("observations", ["id", "resource", "module", "attribute", "value", "first_seen", "last_changed", "last_seen"])
         if not objects:
             return []
         results = []

@@ -6,12 +6,32 @@ import requests
 from secdb.utils import normalize_url
 
 
-class ConfigTarget:
+class ConfigTarget(dict):
     """User specified targets in config.json / config table"""
 
-    def __init__(self, resource, module):
-        self.resource = normalize_url(resource)
-        self.module = module
+    def __init__(
+            self,
+            resource: str,
+            module: str,
+            id=None,
+            first_seen=None,
+            last_seen=None):
+        dict.__init__(
+            self,
+            resource=normalize_url(resource),
+            module=module,
+            id=id,
+            first_seen=first_seen,
+            last_seen=last_seen,
+        )
+
+    @property
+    def resource(self):
+        return self["resource"]
+
+    @property
+    def module(self):
+        return self["module"]
 
 
 class Discovery:
@@ -20,6 +40,7 @@ class Discovery:
         self.modules = modules
         self.source = source
         self.timestamp = datetime.datetime.now()
+
 
 class Observation(dict):
     def __init__(
