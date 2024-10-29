@@ -53,6 +53,14 @@ def api_resources():
     return database.get_resources()
 
 
+@app.route("/api/resources/<int:id>")
+def api_get_resource(id):
+    result = database.get_resource(id)
+    if not result:
+        abort(404)
+    return result
+
+
 @app.route("/api/observations")
 def api_observations():
     return database.get_observations()

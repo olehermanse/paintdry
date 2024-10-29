@@ -1,26 +1,27 @@
 import { useState, useEffect } from "react";
 import "./ResourcesView.css";
-import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
+import { DataGrid, GridRowsProp, GridColDef, GridRowParams } from "@mui/x-data-grid";
 import type {} from "@mui/x-data-grid/themeAugmentation";
+import { useNavigate } from "react-router-dom";
 
 const default_rows: GridRowsProp = [
   {
-    first_seen: null,
-    last_seen: null,
+    first_seen: "Thu, 24 Oct 2024 20:14:56 GMT",
+    last_seen: "Thu, 24 Oct 2024 20:14:56 GMT",
     modules: ["Loading..."],
     resource: "Loading...",
     id: "Loading...",
-    source: null,
+    source: "http",
   },
 ];
 
 const columns: GridColDef[] = [
-  { field: "id", headerName: "id", width: 80 },
-  { field: "resource", headerName: "resource", width: 200 },
-  { field: "modules", headerName: "modules", width: 200 },
-  { field: "source", headerName: "source", width: 200 },
-  { field: "first_seen", headerName: "first_seen", width: 300 },
-  { field: "last_seen", headerName: "last_seen", width: 300 },
+  { field: "id", headerName: "id", maxWidth: 80 },
+  { field: "resource", headerName: "resource" },
+  { field: "modules", headerName: "modules" },
+  { field: "source", headerName: "source" },
+  { field: "first_seen", headerName: "first_seen" },
+  { field: "last_seen", headerName: "last_seen" },
 ];
 
 interface Resource {
@@ -49,17 +50,30 @@ async function fetch_table_data() {
   return resources;
 }
 
+const autosizeOptions = {
+  includeHeaders: true,
+  includeOutliers: true,
+  outliersFactor: 1.5,
+  expand: true,
+};
+
 function ResourcesView() {
   const [rows, setRows] = useState(default_rows);
   // setRows(fetch_table_data());
   useEffect(() => {
     fetch_table_data().then((data) => setRows(data));
   }, []);
+
+  const navigate = useNavigate();
+  function rowClick(params: GridRowParams){
+    console.log(params);
+    navigate("/ui/resources/" + params.id);
+  }
   return (
     <>
       <h1>Resources</h1>
       <div style={{ height: "70vh", width: "100%" }}>
-        <DataGrid rows={rows} columns={columns} />
+        <DataGrid disableRowSelectionOnClick={true} onRowClick={ (params) => rowClick(params) } autoPageSize={true} autosizeOnMount={true} rows={rows} columns={columns} autosizeOptions={autosizeOptions} />
       </div>
     </>
   );

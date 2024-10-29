@@ -1,0 +1,10 @@
+h1 {
+    font-family: sans-serif;
+}
+
+.code-block {
+    background-color: #ddeeff;
+    padding: 1em;
+    margin: 1em;
+    border-radius: 0.3em;
+}

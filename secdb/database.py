@@ -81,6 +81,32 @@ class Database:
             (module, attribute, resource, value, timestamp, value),
         )
 
+    def get_resource(self, id: int) -> Resource | None:
+        rows = self._query(
+            """
+            SELECT id, resource, modules, source, first_seen, last_seen
+            FROM resources
+            WHERE id=%s;
+            """,
+            (id,)
+        )
+        if not rows:
+            return []
+        results = []
+        for row in rows:
+            resource = Resource(
+                id=row[0],
+                resource=row[1],
+                modules=row[2],
+                source=row[3],
+                first_seen=row[4],
+                last_seen=row[5],
+            )
+            results.append(resource)
+        if len(results) == 1:
+            return results[0]
+        return None
+
     def get_resources(self) -> list[Resource]:
         rows = self._query(
             """

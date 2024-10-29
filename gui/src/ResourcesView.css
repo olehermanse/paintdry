@@ -1,3 +1,7 @@
 h1 {
     font-family: sans-serif;
 }
+
+.MuiDataGrid-row {
+    cursor: pointer;
+}
