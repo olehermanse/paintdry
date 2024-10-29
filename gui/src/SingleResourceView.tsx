@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import "./SingleResourceView.css";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 import { Button } from "@mui/material";
 

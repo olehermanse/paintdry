@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import "./ObservationsView.css";
 import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 

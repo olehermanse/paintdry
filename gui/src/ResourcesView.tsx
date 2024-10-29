@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import "./ResourcesView.css";
 import { DataGrid, GridRowsProp, GridColDef, GridRowParams } from "@mui/x-data-grid";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 import { useNavigate } from "react-router-dom";

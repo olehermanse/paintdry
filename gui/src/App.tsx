@@ -1,4 +1,3 @@
-import './App.css'
 import ResourcesView from './ResourcesView';
 import SingleResourceView from './SingleResourceView';
 import ObservationsView from './ObservationsView';
