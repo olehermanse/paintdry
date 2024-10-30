@@ -5,6 +5,10 @@
       "resource": "https://cfengine.com"
     },
     {
+      "module": "dns",
+      "resource": "cfengine.com"
+    },
+    {
       "module": "http",
       "resource": "https://mender.io"
     },
@@ -16,5 +20,10 @@
       "module": "http",
       "resource": "https://northern.tech"
     }
-  ]
+  ],
+  "modules": {
+    "dns": {
+      "command": "python3 modules/moddns.py"
+    }
+  }
 }

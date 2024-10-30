@@ -23,4 +23,5 @@ COPY ./updater.sh /secdb/updater.sh
 COPY ./schema.sql /secdb/schema.sql
 COPY ./config.json /secdb/config.json
 COPY ./secdb /secdb/secdb
+COPY ./modules /secdb/modules
 CMD ["bash", "updater.sh"]

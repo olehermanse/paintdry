@@ -80,6 +80,7 @@ def handle_request(request: dict) -> list[dict]:
         {
             "type": request["operation"],
             "resource": url,
+            "module": "http",
             "attribute": "status_code",
             "value": r.status_code,
             "timestamp": r.timestamp,
@@ -90,6 +91,7 @@ def handle_request(request: dict) -> list[dict]:
             {
                 "type": request["operation"],
                 "resource": url,
+                "module": "http",
                 "attribute": "redirect_location",
                 "value": r.redirect_location,
                 "timestamp": r.timestamp,
@@ -104,6 +106,7 @@ def handle_line(line):
     results = handle_request(request)
     for result in results:
         print(json.dumps(result))
+    print()
 
 
 def main_loop():

@@ -30,11 +30,13 @@ class ConfigTarget(dict):
 
 
 class Discovery:
-    def __init__(self, resource, modules, source):
+    def __init__(self, resource, modules, source, timestamp=None):
         self.resource = normalize_url(resource)
         self.modules = modules
         self.source = source
-        self.timestamp = datetime.datetime.now()
+        if not timestamp:
+            timestamp = datetime.datetime.now()
+        self.timestamp = None
 
 
 class Observation(dict):
@@ -50,6 +52,8 @@ class Observation(dict):
         last_seen=None,
         timestamp=None,
     ):
+        if type(timestamp) is int:
+            timestamp = datetime.datetime.fromtimestamp(timestamp)
         if not timestamp:
             timestamp = datetime.datetime.now()
         dict.__init__(

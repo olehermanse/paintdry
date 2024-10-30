@@ -49,6 +49,7 @@ def handle_request(request: dict) -> list[dict]:
     response = {
         "type": request["operation"],
         "resource": resource,
+        "module": "dns",
         "attribute": "ip",
         "value": lookup[0]["ip"],
         "timestamp": lookup[0]["timestamp"],
@@ -62,6 +63,7 @@ def handle_line(line):
     results = handle_request(request)
     for result in results:
         print(json.dumps(result))
+    print()
 
 
 def main_loop():
@@ -71,6 +73,7 @@ def main_loop():
 
         # Skip empty lines:
         if not line:
+            print()
             continue
 
         assert line[0] == "{" and line[-1] == "}"
