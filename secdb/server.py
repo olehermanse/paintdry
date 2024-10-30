@@ -1,9 +1,8 @@
 import sys
 import json
 
-from flask import Flask, abort, send_file, current_app, send_from_directory
+from flask import Flask, abort, current_app, send_from_directory
 from flask.helpers import redirect
-import psycopg2
 
 from secdb.database import Database
 
@@ -59,6 +58,7 @@ def api_get_resource(id):
     if not result:
         abort(404)
     return result
+
 
 @app.route("/api/config")
 def api_config():

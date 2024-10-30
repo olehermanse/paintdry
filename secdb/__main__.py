@@ -2,9 +2,14 @@ import sys
 from secdb import server
 from secdb import update
 
+
 def main():
     print(sys.argv)
-    if len(sys.argv) != 2 or sys.argv[1] not in ("serve", "update-once", "update-forever"):
+    if len(sys.argv) != 2 or sys.argv[1] not in (
+        "serve",
+        "update-once",
+        "update-forever",
+    ):
         print("Usage: python3 -m secdb <serve | update-once | update-forever>")
         sys.exit(1)
     match sys.argv[1]:
@@ -13,7 +18,8 @@ def main():
         case "update-once":
             return update.once()
         case "update-forever":
-            return update.forever()
+            return update.forever()  # TODO: Deprecate
+
 
 if __name__ == "__main__":
     main()

@@ -22,6 +22,7 @@ def normalize_url(url: str) -> str:
         url = url[0:-1]
     return url + "/"
 
+
 def is_https_url(url):
     return url.startswith("https://")
 
@@ -29,6 +30,7 @@ def is_https_url(url):
 def https_to_http(url):
     assert url.startswith("https://")
     return "http://" + url[len("https://") :]
+
 
 def timestamp():
     return datetime.datetime.now().isoformat()

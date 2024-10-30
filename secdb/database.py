@@ -1,4 +1,3 @@
-import json
 from os import abort
 from time import sleep
 
@@ -89,7 +88,7 @@ class Database:
             FROM resources
             WHERE id=%s;
             """,
-            (id,)
+            (id,),
         )
         if not rows:
             return []
@@ -130,7 +129,9 @@ class Database:
             results.append(resource)
         return results
 
-    def _select(self, table: str, columns: list[str], where: dict | None = None ) -> list[dict]:
+    def _select(
+        self, table: str, columns: list[str], where: dict | None = None
+    ) -> list[dict]:
         where_part = ""
         where_keys = []
         where_values = []
@@ -161,15 +162,15 @@ class Database:
 
     def get_config(self, id: str | None = None) -> list[ConfigTarget]:
         columns = [
-            "id" ,
+            "id",
             "resource",
-            "module" ,
+            "module",
             "first_seen",
             "last_seen",
         ]
         objects = self._select("config", columns, {"id": id} if id else None)
         if id and not objects:
-            abort(404);
+            abort(404)
         if not objects:
             return []
         results = []
@@ -179,7 +180,19 @@ class Database:
         return results
 
     def get_observations(self) -> list[Observation]:
-        objects = self._select("observations", ["id", "resource", "module", "attribute", "value", "first_seen", "last_changed", "last_seen"])
+        objects = self._select(
+            "observations",
+            [
+                "id",
+                "resource",
+                "module",
+                "attribute",
+                "value",
+                "first_seen",
+                "last_changed",
+                "last_seen",
+            ],
+        )
         if not objects:
             return []
         results = []

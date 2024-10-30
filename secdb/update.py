@@ -1,14 +1,18 @@
 import os
 import sys
-import copy
 from time import sleep
 
-import psycopg2
 
-from secdb.utils import JsonFile, ensure_folder, ensure_json_file, shell, sha, timestamp
+from secdb.utils import JsonFile, ensure_folder, timestamp
 from secdb.database import Database
 from secdb.modules.http import HTTPModule
-from secdb.modules.lib import clear_get_cache, Discovery, Observation, Resource, ConfigTarget
+from secdb.modules.lib import (
+    clear_get_cache,
+    Discovery,
+    Observation,
+    Resource,
+    ConfigTarget,
+)
 
 
 class Updater:
@@ -16,7 +20,9 @@ class Updater:
         self.database = Database()
         self.cache = {}
 
-    def _process(self, identifier: str, module: str) -> tuple[list[Observation],list[Discovery]]:
+    def _process(
+        self, identifier: str, module: str
+    ) -> tuple[list[Observation], list[Discovery]]:
         key = module + " - " + identifier
         if key in self.cache:
             return ([], [])
@@ -32,7 +38,9 @@ class Updater:
 
     def process_discovery(self, discovery: Discovery):
         print("Discovery: " + discovery.resource)
-        self.database.upsert_resource(Resource.from_discovery(discovery), discovery.source)
+        self.database.upsert_resource(
+            Resource.from_discovery(discovery), discovery.source
+        )
 
     def process_resource(self, entry: Resource):
         resource = entry.resource
@@ -83,11 +91,13 @@ class Updater:
         metadata.save()
         metadata.save(os.path.join(self.snapshot, "metadata.json"))
 
+
 def forever():
     while True:
         updater = Updater()
         updater.update()
         sleep(10)
+
 
 def once():
     updater = Updater()

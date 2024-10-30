@@ -1,4 +1,3 @@
-from ast import Attribute
 import datetime
 from typing import Any
 import requests
@@ -10,12 +9,8 @@ class ConfigTarget(dict):
     """User specified targets in config.json / config table"""
 
     def __init__(
-            self,
-            resource: str,
-            module: str,
-            id=None,
-            first_seen=None,
-            last_seen=None):
+        self, resource: str, module: str, id=None, first_seen=None, last_seen=None
+    ):
         dict.__init__(
             self,
             resource=normalize_url(resource),
@@ -67,7 +62,7 @@ class Observation(dict):
             first_seen=first_seen,
             last_changed=last_changed,
             last_seen=last_seen,
-            timestamp=timestamp
+            timestamp=timestamp,
         )
 
     @property
