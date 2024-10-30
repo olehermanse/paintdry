@@ -1,5 +1,5 @@
-# syntax=docker/dockerfile:1.7-labs
-FROM node:18@sha256:ddd173cd94537e155b378342056e0968e8299eb3da9dd5d412d3b7f796ac38c0  AS build
+# syntax=docker/dockerfile:1.7-labs@sha256:b99fecfe00268a8b556fad7d9c37ee25d716ae08a5d7320e6d51c4dd83246894
+FROM node:18@sha256:ddd173cd94537e155b378342056e0968e8299eb3da9dd5d412d3b7f796ac38c0 AS build
 WORKDIR /secdb/gui/
 COPY ./gui/package.json /secdb/gui/package.json
 COPY ./gui/package-lock.json /secdb/gui/package-lock.json

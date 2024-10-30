@@ -26,3 +26,5 @@ __pycache__
 
 gui/node_modules
 gui/dist
+
+/venv/
