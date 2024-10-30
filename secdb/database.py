@@ -3,7 +3,7 @@ from time import sleep
 
 import psycopg2
 
-from secdb.modules.lib import ConfigTarget, Observation, Resource
+from secdb.lib import ConfigTarget, Observation, Resource
 
 
 def connect_loop():
@@ -73,12 +73,26 @@ class Database:
         timestamp = observation.timestamp
         return self._query(
             """
-            INSERT INTO observations (module, attribute, resource, value)
-            VALUES(%s, %s, %s, %s)
+            INSERT INTO observations (module, attribute, resource, value, first_seen, last_changed, last_seen)
+            VALUES(%s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT ON CONSTRAINT observations_constraint
-            DO UPDATE SET last_seen = %s, value = %s
+            DO UPDATE SET last_seen = %s,
+            value = EXCLUDED.value,
+            last_changed = CASE
+            WHEN observations.value IS DISTINCT FROM EXCLUDED.value THEN %s
+            ELSE observations.last_changed END;
             """,
-            (module, attribute, resource, value, timestamp, value),
+            (
+                module,
+                attribute,
+                resource,
+                value,
+                timestamp,
+                timestamp,
+                timestamp,
+                timestamp,
+                timestamp,
+            ),
         )
 
     def get_resource(self, id: int) -> Resource | None:

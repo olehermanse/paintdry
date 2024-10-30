@@ -5,11 +5,11 @@ import datetime
 from time import sleep
 from subprocess import Popen, PIPE, STDOUT
 
-
 from secdb.utils import JsonFile, ensure_folder, timestamp
 from secdb.database import Database
-from secdb.modules.http import HTTPModule
-from secdb.modules.lib import (
+from secdb.lib import (
+    ModuleRequest,
+    ModuleResponse,
     clear_get_cache,
     Discovery,
     Observation,
@@ -22,13 +22,34 @@ def now() -> int:
     return int(datetime.datetime.now().timestamp())
 
 
+def response_to_discovery(response: ModuleResponse) -> Discovery:
+    data = {**response}
+    assert data["operation"] == "discovery"
+    del data["operation"]
+    return Discovery(**data)
+
+
+def response_to_observation(response: ModuleResponse) -> Observation:
+    data = {**response}
+    assert data["operation"] == "observation"
+    del data["operation"]
+    return Observation(**data)
+
+
 class Updater:
     def __init__(self):
         self.database = Database()
         self.cache = {}
         self.externals = {}
+        self.discovery_backlog = []
 
-    def handle_external_module(self, resource: Resource, module: str):
+    def send_request(self, module: str, request: ModuleRequest):
+        process = self.get_process(module)
+        a = json.dumps(request)
+        process.stdin.write(a + "\n")
+        process.stdin.flush()
+
+    def get_process(self, module: str):
         config = JsonFile("config.json")
         if not module in self.externals:
             print(f"Starting '{module}' module")
@@ -42,48 +63,76 @@ class Updater:
                 stdout=PIPE,
                 stderr=STDOUT,
             )
+        return self.externals[module]
 
+    def receive_responses(self, module: str) -> list[ModuleResponse]:
+        process = self.get_process(module)
+        responses: list[ModuleResponse] = []
+        while True:
+            response = process.stdout.readline().strip()
+            if not response:
+                break
+            try:
+                data = json.loads(response)
+            except:
+                print("Failed to parse JSON;")
+                print(response)
+                continue
+            responses.append(ModuleResponse.convert(data))
+        return responses
+
+    def process_discovery_backlog(self):
+        for discovery in self.discovery_backlog:
+            request = ModuleRequest(
+                operation="discovery",
+                resource=discovery["resource"],
+                module=discovery["module"],
+                source=discovery["source"],
+                timestamp=now(),
+            )
+            self.send_request(discovery["module"], request)
+        for discovery in self.discovery_backlog:
+            responses = self.receive_responses(discovery["module"])
+            for response in responses:
+                if response["module"] == discovery["module"]:
+                    observation = response_to_observation(response)
+                    self.database.upsert_observations(observation)
+        self.discovery_backlog = []
+
+    def process_discoveries(self, module: str, discoveries: list[Discovery]):
+        for discovery in discoveries:
+            if discovery.module != module:
+                self.discovery_backlog.append(discovery)
+                continue
+            source = discovery.source
+            resource = Resource.from_discovery(discovery)
+            self.database.upsert_resource(resource, source)
+
+    def handle_external_module(self, resource: Resource, module: str):
         print(f"Sending requests to '{module}' module for '{resource.resource}'")
-        process: Popen = self.externals[module]
-        request = {
-            "operation": "discovery",
-            "resource": resource.resource,
-            "module": module,
-            "timestamp": now(),
-        }
-        a = json.dumps(request)
+        source = resource["source"]
+        if not source:
+            source = ""  # TODO FIXME
+        request = ModuleRequest(
+            operation="discovery",
+            resource=resource.resource,
+            module=module,
+            source=source,
+            timestamp=now(),
+        )
+        self.send_request(module, request)
         request["operation"] = "observation"
-        b = json.dumps(request)
-        process.stdin.write(a + "\n")
-        process.stdin.write(b + "\n")
-        process.stdin.flush()
+        self.send_request(module, request)
         print(f"Sent requests to '{module}' module for '{resource.resource}'")
 
-        discoveries = []
-        while True:
-            response = process.stdout.readline().strip()
-            if not response:
-                break
-            o = json.loads(response)
-            assert o["type"] == "discovery"
-            del o["type"]
-            o["modules"] = [o["module"]]
-            del o["module"]  # TODO FIXME
-            o["source"] = module
-            result = Discovery(**o)
-            discoveries.append(result)
+        discoveries = [response_to_discovery(x) for x in self.receive_responses(module)]
         print(f"Received discoveries from '{module}' module for '{resource.resource}'")
 
-        observations = []
-        while True:
-            response = process.stdout.readline().strip()
-            if not response:
-                break
-            o = json.loads(response)
-            assert o["type"] == "observation"
-            del o["type"]
-            result = Observation(**o)
-            observations.append(result)
+        self.process_discoveries(module, discoveries)
+
+        observations = [
+            response_to_observation(x) for x in self.receive_responses(module)
+        ]
 
         print(f"Received discoveries from '{module}' module for '{resource.resource}'")
 
@@ -100,7 +149,7 @@ class Updater:
         for module in resource.modules:
             match module:
                 case "http":
-                    return HTTPModule.process(resource)
+                    return self.handle_external_module(resource, module)
                 case "dns":
                     return self.handle_external_module(resource, module)
                 case other:

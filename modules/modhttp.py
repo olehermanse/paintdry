@@ -43,6 +43,17 @@ def normalize_url(url: str) -> str:
     return url + "/"
 
 
+def url_to_hostname(url: str) -> str:
+    if url.startswith("https://"):
+        url = url[len("https://") :]
+    elif url.startswith("http://"):
+        url = url[len("http://") :]
+    index = url.rfind("/")
+    if index >= 0:
+        return url[0:index]
+    return url
+
+
 def handle_request(request: dict) -> list[dict]:
     assert type(request.get("operation", None)) is str
     assert type(request.get("resource", None)) is str
@@ -56,21 +67,32 @@ def handle_request(request: dict) -> list[dict]:
         discoveries = []
         discoveries.append(
             {
-                "type": "discovery",
+                "operation": "discovery",
                 "resource": url,
-                "module": "dns",
+                "module": "http",
+                "source": request["source"],
                 "timestamp": request["timestamp"],
             }
         )
         if url.startswith("https://"):
             discoveries.append(
                 {
-                    "type": "discovery",
+                    "operation": "discovery",
                     "resource": url[0:4] + url[5:],
-                    "module": "dns",
+                    "module": "http",
+                    "source": "http",
                     "timestamp": request["timestamp"],
                 }
             )
+        discoveries.append(
+            {
+                "operation": "discovery",
+                "resource": url_to_hostname(url),
+                "module": "dns",
+                "source": "http",
+                "timestamp": request["timestamp"],
+            }
+        )
         return discoveries
 
     assert request["operation"] == "observation"
@@ -78,7 +100,7 @@ def handle_request(request: dict) -> list[dict]:
     observations = []
     observations.append(
         {
-            "type": request["operation"],
+            "operation": request["operation"],
             "resource": url,
             "module": "http",
             "attribute": "status_code",
@@ -89,7 +111,7 @@ def handle_request(request: dict) -> list[dict]:
     if r.redirect_location:
         observations.append(
             {
-                "type": request["operation"],
+                "operation": request["operation"],
                 "resource": url,
                 "module": "http",
                 "attribute": "redirect_location",
@@ -134,6 +156,7 @@ def run_example():
         {
             "operation": "discovery",
             "resource": "https://cfengine.com",
+            "source": "config.json",
             "module": "http",
             "timestamp": 1730241747,
         },

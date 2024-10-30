@@ -24,6 +24,9 @@
   "modules": {
     "dns": {
       "command": "python3 modules/moddns.py"
+    },
+    "http": {
+      "command": "python3 modules/modhttp.py"
     }
   }
 }

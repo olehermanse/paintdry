@@ -18,7 +18,19 @@ def dns_lookup(hostname: str) -> list[dict]:
     return [{"ip": x[4][0], "timestamp": now()} for x in results]
 
 
+def url_to_hostname(url: str) -> str:
+    if url.startswith("https://"):
+        url = url[len("https://") :]
+    elif url.startswith("http://"):
+        url = url[len("http://") :]
+    index = url.rfind("/")
+    if index >= 0:
+        return url[0:index]
+    return url
+
+
 def normalize_hostname(hostname: str) -> str:
+    hostname = url_to_hostname(hostname)
     if hostname.startswith("www."):
         return hostname[4:]
     return hostname
@@ -38,17 +50,18 @@ def handle_request(request: dict) -> list[dict]:
         # Just confirm the requested resource:
         return [
             {
-                "type": "discovery",
-                "resource": resource,
+                "operation": "discovery",
+                "resource": normalize_hostname(resource),
                 "module": "dns",
+                "source": request["source"],
                 "timestamp": request["timestamp"],
             }
         ]
 
     assert request["operation"] == "observation"
     response = {
-        "type": request["operation"],
-        "resource": resource,
+        "operation": request["operation"],
+        "resource": normalize_hostname(resource),
         "module": "dns",
         "attribute": "ip",
         "value": lookup[0]["ip"],
@@ -93,6 +106,7 @@ def run_example():
             "operation": "discovery",
             "resource": "www.cfengine.com",
             "module": "dns",
+            "source": "config.json",
             "timestamp": 1730241747,
         },
         {
