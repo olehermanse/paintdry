@@ -12,10 +12,10 @@ def now() -> int:
 
 
 @cache
-def dns_lookup(hostname: str) -> list[dict]:
+def dns_lookup(hostname: str) -> tuple[int, list[str]]:
     time.sleep(1)
     results = socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)
-    return [{"ip": x[4][0], "timestamp": now()} for x in results]
+    return (now(), sorted([x[4][0] for x in results]))
 
 
 def url_to_hostname(url: str) -> str:
@@ -43,7 +43,7 @@ def handle_request(request: dict) -> list[dict]:
     assert request["module"] == "dns"
 
     resource = normalize_hostname(request["resource"])
-    lookup = dns_lookup(resource)
+    timestamp, ips = dns_lookup(resource)
 
     if request["operation"] == "discovery":
         # DNS module currently does not discover anything extra
@@ -64,8 +64,8 @@ def handle_request(request: dict) -> list[dict]:
         "resource": normalize_hostname(resource),
         "module": "dns",
         "attribute": "ip",
-        "value": lookup[0]["ip"],
-        "timestamp": lookup[0]["timestamp"],
+        "value": ", ".join(ips),
+        "timestamp": timestamp,
     }
     return [response]
 

@@ -42,11 +42,41 @@ CREATE TABLE IF NOT EXISTS history (
 
 CREATE TABLE IF NOT EXISTS events (
     id serial PRIMARY KEY,
-    ts TIMESTAMP,
     resource TEXT NOT NULL,
     module TEXT NOT NULL,
     attribute TEXT NOT NULL,
-    value TEXT NOT NULL,
     old_value TEXT NOT NULL,
-    CONSTRAINT events_constraint UNIQUE (module, attribute, resource, ts)
+    new_value TEXT NOT NULL,
+    ts TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT events_constraint UNIQUE (module, attribute, resource, ts, old_value, new_value)
 );
+
+CREATE OR REPLACE FUNCTION observations_to_history_function()
+RETURNS TRIGGER AS $observations_to_history_function$
+BEGIN
+    IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE' AND NEW.value != OLD.value) THEN
+        INSERT INTO history(resource, module, attribute, value, ts)
+        VALUES (NEW.resource, NEW.module, NEW.attribute, NEW.value, NEW.last_changed);
+    END IF;
+    RETURN NULL;
+END;
+$observations_to_history_function$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER observations_to_history_trigger
+    AFTER INSERT OR UPDATE ON observations
+    FOR EACH ROW EXECUTE FUNCTION observations_to_history_function();
+
+CREATE OR REPLACE FUNCTION observations_to_events_function()
+RETURNS TRIGGER AS $observations_to_events_function$
+BEGIN
+    IF (NEW.value != OLD.value) THEN
+        INSERT INTO events(resource, module, attribute, old_value, new_value, ts)
+        VALUES (NEW.resource, NEW.module, NEW.attribute, OLD.value, NEW.value, NEW.last_changed);
+    END IF;
+    RETURN NULL;
+END;
+$observations_to_events_function$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER observations_to_events_trigger
+    AFTER INSERT OR UPDATE ON observations
+    FOR EACH ROW EXECUTE FUNCTION observations_to_events_function();
