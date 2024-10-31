@@ -37,7 +37,7 @@ function SingleResourceView() {
       </code></pre>
       <Button fullWidth variant="outlined"
           onClick={() => {
-            navigate("../");
+            navigate("..", { relative: "path" });
           }}
         >Back</Button>
     </>
