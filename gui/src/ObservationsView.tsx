@@ -58,6 +58,7 @@ function ObservationsView() {
   useEffect(() => {
     fetch_table_data().then((data) => setRows(data));
   }, []);
+
   return (
     <>
       <h1>Observations</h1>
