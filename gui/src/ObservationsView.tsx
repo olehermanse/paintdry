@@ -35,20 +35,10 @@ interface Observation {
   last_seen: string | null;
 }
 
-function fix_ids(data: Observation[]) {
-  let counter = -1;
-  for (const x of data) {
-    if (x.id === undefined || x.id === null) {
-      x.id = counter--;
-    }
-  }
-}
-
 async function fetch_table_data() {
   const response = await fetch("/api/observations");
   const observations: Observation[] = await response.json();
   console.log(observations);
-  fix_ids(observations);
   return observations;
 }
 
