@@ -62,15 +62,9 @@ def api_get_resource(id):
 
 @app.route("/api/config")
 def api_config():
-    return database.get_config()
-
-
-@app.route("/api/config/<int:id>")
-def api_get_config(id):
-    result = database.get_config(id)
-    if not result:
-        abort(404)
-    return result
+    with open("./config.json", "r") as f:
+        data = json.loads(f.read())
+    return data
 
 
 @app.route("/api/observations")

@@ -15,7 +15,9 @@ services:
     depends_on:
       - postgres
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: gui.Dockerfile
     command: python3 -m secdb serve
     ports:
       - "8000:8000"
@@ -28,7 +30,7 @@ services:
   updater:
     build:
       context: .
-      dockerfile: Dockerfile-updater
+      dockerfile: updater.Dockerfile
     volumes:
       - ./state:/secdb/state
     command: bash updater.sh

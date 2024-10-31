@@ -15,7 +15,7 @@ interface Resource {
 async function fetch_table_data(id: string) {
   const response = await fetch("/api/resources/" + id);
   const resource: Resource = await response.json();
-  return resource
+  return resource;
 }
 
 function SingleResourceView() {
@@ -27,19 +27,28 @@ function SingleResourceView() {
     if (id === undefined) {
       return;
     }
-    fetch_table_data(id).then((data) => { setRawData(data); setResource(data.resource); });
+    fetch_table_data(id).then((data) => {
+      setRawData(data);
+      setResource(data.resource);
+    });
   }, [id]);
   return (
     <>
-      <h1>Resource: { resource } ({ id })</h1>
-      <pre className="code-block"><code>
-        { JSON.stringify(rawData, null, 2) }
-      </code></pre>
-      <Button fullWidth variant="outlined"
-          onClick={() => {
-            navigate("..", { relative: "path" });
-          }}
-        >Back</Button>
+      <h1>
+        Resource: {resource} ({id})
+      </h1>
+      <pre className="code-block">
+        <code>{JSON.stringify(rawData, null, 2)}</code>
+      </pre>
+      <Button
+        fullWidth
+        variant="outlined"
+        onClick={() => {
+          navigate("..", { relative: "path" });
+        }}
+      >
+        Back
+      </Button>
     </>
   );
 }

@@ -1,18 +1,18 @@
-import * as React from 'react';
+import * as React from "react";
 import { Box, Tab, Tabs } from "@mui/material";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 function a11yProps(index: number) {
   return {
     id: `simple-tab-${index}`,
-    'aria-controls': `simple-tabpanel-${index}`,
+    "aria-controls": `simple-tabpanel-${index}`,
   };
 }
 
 const tabs = ["resources", "observations", "config"];
 
 function choose_index(value: string): number {
-  for (let i = 0; i < tabs.length; i++){
+  for (let i = 0; i < tabs.length; i++) {
     const word = tabs[i];
     if (value.includes(word)) {
       return i;
@@ -35,14 +35,18 @@ const Layout = () => {
   const [value, setValue] = React.useState(index);
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     console.log(event);
-      setValue(newValue);
-      navigate(choose_string(newValue));
-    };
+    setValue(newValue);
+    navigate(choose_string(newValue));
+  };
   return (
     <>
-      <Box sx={{ width: '100%' }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
+      <Box sx={{ width: "100%" }}>
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Tabs
+            value={value}
+            onChange={handleChange}
+            aria-label="basic tabs example"
+          >
             <Tab label="Resources" {...a11yProps(0)} />
             <Tab label="Observations" {...a11yProps(1)} />
             <Tab label="Config" {...a11yProps(2)} />
@@ -51,7 +55,7 @@ const Layout = () => {
       </Box>
       <Outlet />
     </>
-  )
+  );
 };
 
 export default Layout;

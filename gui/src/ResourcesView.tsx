@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { DataGrid, GridRowsProp, GridColDef, GridRowParams } from "@mui/x-data-grid";
+import {
+  DataGrid,
+  GridRowsProp,
+  GridColDef,
+  GridRowParams,
+} from "@mui/x-data-grid";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 import { useNavigate } from "react-router-dom";
 
@@ -64,7 +69,7 @@ function ResourcesView() {
   }, []);
 
   const navigate = useNavigate();
-  function rowClick(params: GridRowParams){
+  function rowClick(params: GridRowParams) {
     console.log(params);
     navigate("/ui/resources/" + params.id);
   }
@@ -72,7 +77,15 @@ function ResourcesView() {
     <>
       <h1>Resources</h1>
       <div style={{ height: "70vh", width: "100%" }}>
-        <DataGrid disableRowSelectionOnClick={true} onRowClick={ (params) => rowClick(params) } autoPageSize={true} autosizeOnMount={true} rows={rows} columns={columns} autosizeOptions={autosizeOptions} />
+        <DataGrid
+          disableRowSelectionOnClick={true}
+          onRowClick={(params) => rowClick(params)}
+          autoPageSize={true}
+          autosizeOnMount={true}
+          rows={rows}
+          columns={columns}
+          autosizeOptions={autosizeOptions}
+        />
       </div>
     </>
   );

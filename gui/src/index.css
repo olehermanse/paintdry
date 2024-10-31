@@ -1,14 +1,14 @@
 h1 {
-    font-family: sans-serif;
+  font-family: sans-serif;
 }
 
 .MuiDataGrid-row {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .code-block {
-    background-color: #ddeeff;
-    padding: 1em;
-    margin: 1em;
-    border-radius: 0.3em;
+  background-color: #ddeeff;
+  padding: 1em;
+  margin: 1em;
+  border-radius: 0.3em;
 }

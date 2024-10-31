@@ -8,7 +8,6 @@ import {
 } from "react-router-dom";
 import Layout from './Layout';
 import ConfigView from './ConfigView';
-import SingleConfigView from './SingleConfigView';
 
 function App() {
   return (
@@ -20,7 +19,6 @@ function App() {
         <Route path="/ui/resources/:id" element={<SingleResourceView />} />
         <Route path="/ui/observations" element={<ObservationsView />} />
         <Route path="/ui/config" element={<ConfigView />} />
-        <Route path="/ui/config/:id" element={<SingleConfigView />} />
         <Route path="*" element={<div> Other option </div>} />
       </Route>
     </Routes>
