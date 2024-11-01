@@ -12,31 +12,27 @@ interface Resource {
   source: string | null;
 }
 
-async function fetch_table_data(id: string) {
-  const response = await fetch("/api/resources/" + id);
+async function fetch_table_data(api: string, id: string) {
+  const response = await fetch(api.endsWith("/") ? api + id : api + "/" + id);
   const resource: Resource = await response.json();
   return resource;
 }
 
-function SingleResourceView() {
+function SingleJsonView({ api }: { api: string }) {
   const navigate = useNavigate();
   const { id } = useParams();
   const [rawData, setRawData] = useState({});
-  const [resource, setResource] = useState("");
   useEffect(() => {
     if (id === undefined) {
       return;
     }
-    fetch_table_data(id).then((data) => {
+    fetch_table_data(api, id).then((data) => {
       setRawData(data);
-      setResource(data.resource);
     });
-  }, [id]);
+  }, [api, id]);
   return (
     <>
-      <h1>
-        Resource: {resource} ({id})
-      </h1>
+      <h1>Details:</h1>
       <pre className="code-block">
         <code>{JSON.stringify(rawData, null, 2)}</code>
       </pre>
@@ -53,4 +49,4 @@ function SingleResourceView() {
   );
 }
 
-export default SingleResourceView;
+export default SingleJsonView;

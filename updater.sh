@@ -10,8 +10,8 @@ while true; do
   psql -c "SELECT * FROM observations;"
   echo "SELECT * FROM history;"
   psql -c "SELECT * FROM history;"
-  echo "SELECT * FROM events;"
-  psql -c "SELECT * FROM events;"
+  echo "SELECT * FROM changes;"
+  psql -c "SELECT * FROM changes;"
   python3 -m secdb update-once
   sleep 10
 done

@@ -1,18 +1,36 @@
-import ResourcesView from "./ResourcesView";
-import SingleResourceView from "./SingleResourceView";
 import TableView from "./TableView";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./Layout";
 import ConfigView from "./ConfigView";
+import SingleJsonView from "./SingleJsonView";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/ui" element={<Layout />}>
-          <Route index element={<ResourcesView />} />
-          <Route path="/ui/resources" element={<ResourcesView />} />
-          <Route path="/ui/resources/:id" element={<SingleResourceView />} />
+          <Route index element={<ConfigView />} />
+          <Route
+            path="/ui/resources"
+            element={
+              <TableView
+                api={"/api/resources"}
+                header={"Resources"}
+                fields={[
+                  "id",
+                  "resource",
+                  "modules",
+                  "source",
+                  "first_seen",
+                  "last_seen",
+                ]}
+              />
+            }
+          />
+          <Route
+            path="/ui/resources/:id"
+            element={<SingleJsonView api={"/api/resources"} />}
+          />
           <Route
             path="/ui/observations"
             element={
@@ -32,8 +50,12 @@ function App() {
               />
             }
           />
+          <Route
+            path="/ui/observations/:id"
+            element={<SingleJsonView api={"/api/observations"} />}
+          />
           <Route path="/ui/config" element={<ConfigView />} />
-          <Route path="*" element={<div> Other option </div>} />
+          <Route path="*" element={<div> Page not found... </div>} />
         </Route>
       </Routes>
     </BrowserRouter>
