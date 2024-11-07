@@ -19,6 +19,21 @@ class Response:
         self.redirect_location = r.headers.get("Location", None)
         self.body = r.text
         self.timestamp = now()
+        self.notable_headers = {}
+
+        for header in [
+            "Location",
+            "Content-Security-Policy",
+            "Permissions-Policy",
+            "Referrer-Policy",
+            "Server",
+            "X-Content-Type-Options",
+            "X-Frame-Options",
+            "X-Xss-Protection",
+        ]:
+            key = header.lower().replace("-", "_")
+            value = r.headers.get(header, "")
+            self.notable_headers[key] = value
 
 
 @cache
@@ -108,17 +123,18 @@ def handle_request(request: dict) -> list[dict]:
             "timestamp": r.timestamp,
         }
     )
-    if r.redirect_location:
+    for key, value in r.notable_headers.items():
         observations.append(
             {
                 "operation": request["operation"],
                 "resource": url,
                 "module": "http",
-                "attribute": "redirect_location",
-                "value": r.redirect_location,
+                "attribute": key,
+                "value": value,
                 "timestamp": r.timestamp,
             }
         )
+
     return observations
 
 

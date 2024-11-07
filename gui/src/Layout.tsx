@@ -33,7 +33,7 @@ const Layout = () => {
   const loc = useLocation();
   const index = choose_index(loc.pathname);
   const [value, setValue] = React.useState(index);
-  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
     navigate(choose_string(newValue));
   };
