@@ -94,7 +94,7 @@ class Database:
             (id,),
         )
         if not rows:
-            return []
+            return None
         results = []
         for row in rows:
             resource = Resource(
@@ -185,37 +185,30 @@ class Database:
             results.append(result)
         return results
 
-    def get_observation(self, resource):
+    def get_observation(self, id: int) -> Observation | None:
         rows = self._query(
             """
-            SELECT module, attribute, resource, value, first_seen, last_seen
+            SELECT id, resource, module, attribute, value, first_seen, last_changed, last_seen
             FROM observations
-            WHERE resource=%s;
+            WHERE id=%s;
             """,
-            (resource,),
+            (id,),
         )
         if not rows:
-            return []
+            return None
         results = []
         for row in rows:
-            results.append(
-                {
-                    "module": row[0],
-                    "attribute": row[1],
-                    "resource": row[2],
-                    "value": row[3],
-                    "first_seen": row[4].timestamp(),
-                    "last_seen": row[5].timestamp(),
-                }
+            observation = Observation(
+                id=row[0],
+                resource=row[1],
+                module=row[2],
+                attribute=row[3],
+                value=row[4],
+                first_seen=row[5],
+                last_changed=row[6],
+                last_seen=row[7],
             )
-        return results
-
-    def get_one_of(self, possibilities):
-        for x in possibilities:
-            r = self.get_observation(x)
-            if r:
-                return r
+            results.append(observation)
+        if len(results) == 1:
+            return results[0]
         return None
-
-    def get_observations_resources(self):
-        return self._query("SELECT DISTINCT resource FROM observations;")
