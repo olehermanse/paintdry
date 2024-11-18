@@ -254,7 +254,6 @@ class Updater:
             self._process(resource, module)
 
     def update_config(self, target: ConfigTarget):
-        self.database.upsert_config(target)
         resource = Resource.from_target(target)
         self.database.upsert_resource(resource, "config.json")
 

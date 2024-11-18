@@ -1,21 +1,12 @@
 # SecDB
 
 A modular system to track security relevant data points over time.
-Not for traditional monitoring, more for things you don't expect to change at all, and you'd like a notification when they do.
+Meant for things you don't expect to change at all, and you'd like a notification when they do.
 Examples: Checksums, redirects, certificates, security settings.
 
 Example data:
 
 ```SQL
-SELECT * FROM config;
-        id |        resource        | module |         first_seen         |        last_changed        |         last_seen
------------+------------------------+--------+----------------------------+----------------------------+----------------------------
-         1 | https://cfengine.com/  | http   | 2024-10-24 13:30:06.013239 | 2024-10-24 13:30:06.013239 | 2024-10-24 13:30:28.569186
-         2 | https://mender.io/     | http   | 2024-10-24 13:30:06.020857 | 2024-10-24 13:30:06.020857 | 2024-10-24 13:30:28.572474
-         3 | https://alvaldi.com/   | http   | 2024-10-24 13:30:06.023032 | 2024-10-24 13:30:06.023032 | 2024-10-24 13:30:28.574294
-         4 | https://northern.tech/ | http   | 2024-10-24 13:30:06.026265 | 2024-10-24 13:30:06.026265 | 2024-10-24 13:30:28.576001
-(4 rows)
-
 SELECT * FROM resources;
         id |        resource        | modules |   source    |         first_seen         |         last_seen
 -----------+------------------------+---------+-------------+----------------------------+----------------------------

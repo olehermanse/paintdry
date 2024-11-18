@@ -43,17 +43,6 @@ class Database:
         cur.close()
         return result
 
-    def upsert_config(self, target: ConfigTarget):
-        return self._query(
-            """
-            INSERT INTO config (module, resource)
-            VALUES(%s, %s)
-            ON CONFLICT ON CONSTRAINT config_constraint
-            DO UPDATE SET last_seen = NOW()
-            """,
-            (target.module, target.resource),
-        )
-
     def upsert_resource(self, resource: Resource, source):
         return self._query(
             """
@@ -172,25 +161,6 @@ class Database:
             for key, value in zip(columns, row):
                 d[key] = value
             results.append(d)
-        return results
-
-    def get_config(self, id: str | None = None) -> list[ConfigTarget]:
-        columns = [
-            "id",
-            "resource",
-            "module",
-            "first_seen",
-            "last_seen",
-        ]
-        objects = self._select("config", columns, {"id": id} if id else None)
-        if id and not objects:
-            abort(404)
-        if not objects:
-            return []
-        results = []
-        for object in objects:
-            result = ConfigTarget(**object)
-            results.append(result)
         return results
 
     def get_observations(self) -> list[Observation]:

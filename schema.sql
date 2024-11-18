@@ -1,13 +1,3 @@
-CREATE TABLE IF NOT EXISTS config (
-    id serial PRIMARY KEY,
-    resource TEXT NOT NULL,
-    module TEXT NOT NULL,
-    first_seen TIMESTAMP DEFAULT NOW(),
-    last_changed TIMESTAMP DEFAULT NOW(),
-    last_seen TIMESTAMP DEFAULT NOW(),
-    CONSTRAINT config_constraint UNIQUE (module, resource)
-);
-
 CREATE TABLE IF NOT EXISTS resources (
     id serial PRIMARY KEY,
     resource TEXT NOT NULL,
