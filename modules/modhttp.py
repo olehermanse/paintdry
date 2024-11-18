@@ -5,13 +5,12 @@ import datetime
 import requests
 from functools import cache
 from urllib.parse import urlparse
-
-
-def now() -> int:
-    return int(datetime.datetime.now().timestamp())
+from modlib import ModBase, now, normalize_url, url_to_hostname
 
 
 class Response:
+    """Wrapper around a response from requests, exposing only what we need"""
+
     def __init__(self, r):
         self._r = r
         self.url = r.url
@@ -42,43 +41,28 @@ def http_get(url: str):
     return r
 
 
-def is_root_url(url: str):
-    res = urlparse(url)
-    return res.path == "/" or res.path == ""
+class ModHTTP(ModBase):
+    def example_requests(self):
+        return [
+            {
+                "operation": "discovery",
+                "resource": "https://cfengine.com",
+                "source": "config.json",
+                "module": "http",
+                "timestamp": 1730241747,
+            },
+            {
+                "operation": "observation",
+                "resource": "https://cfengine.com",
+                "module": "http",
+                "timestamp": 1730241747,
+            },
+        ]
 
+    def discovery(self, request: dict) -> list[dict]:
+        url = normalize_url(request["resource"])
+        r = http_get(url)
 
-@cache
-def normalize_url(url: str) -> str:
-    if not url.startswith(("http://", "https://")):
-        return url
-    if not is_root_url(url):
-        return url
-    while url.endswith("/"):
-        url = url[0:-1]
-    return url + "/"
-
-
-def url_to_hostname(url: str) -> str:
-    if url.startswith("https://"):
-        url = url[len("https://") :]
-    elif url.startswith("http://"):
-        url = url[len("http://") :]
-    index = url.rfind("/")
-    if index >= 0:
-        return url[0:index]
-    return url
-
-
-def handle_request(request: dict) -> list[dict]:
-    assert type(request.get("operation", None)) is str
-    assert type(request.get("resource", None)) is str
-    assert type(request.get("module", None)) is str
-    assert request["module"] == "http"
-
-    url = normalize_url(request["resource"])
-    r = http_get(url)
-
-    if request["operation"] == "discovery":
         discoveries = []
         discoveries.append(
             {
@@ -110,95 +94,37 @@ def handle_request(request: dict) -> list[dict]:
         )
         return discoveries
 
-    assert request["operation"] == "observation"
-
-    observations = []
-    observations.append(
-        {
-            "operation": request["operation"],
-            "resource": url,
-            "module": "http",
-            "attribute": "status_code",
-            "value": r.status_code,
-            "timestamp": r.timestamp,
-        }
-    )
-    for key, value in r.notable_headers.items():
+    def observation(self, request: dict) -> list[dict]:
+        url = normalize_url(request["resource"])
+        r = http_get(url)
+        observations = []
         observations.append(
             {
                 "operation": request["operation"],
                 "resource": url,
                 "module": "http",
-                "attribute": key,
-                "value": value,
+                "attribute": "status_code",
+                "value": r.status_code,
                 "timestamp": r.timestamp,
             }
         )
-
-    return observations
-
-
-def handle_line(line):
-    request = json.loads(line)
-    assert type(request) is dict
-    results = handle_request(request)
-    for result in results:
-        print(json.dumps(result))
-    print()
-
-
-def main_loop():
-    history = set()
-    for line in fileinput.input(encoding="utf-8"):
-        line = line.strip()  # Normalize / remove trailing newline
-
-        # Skip empty lines:
-        if not line:
-            continue
-
-        assert line[0] == "{" and line[-1] == "}"
-        # Skip duplicate requests
-        # Just a precaution, shouldn't be necessary
-        if line in history:
-            continue
-        history.add(line)
-
-        # Actually handle request and output results:
-        handle_line(line)
-
-
-def run_example():
-    requests = [
-        {
-            "operation": "discovery",
-            "resource": "https://cfengine.com",
-            "source": "config.json",
-            "module": "http",
-            "timestamp": 1730241747,
-        },
-        {
-            "operation": "observation",
-            "resource": "https://cfengine.com",
-            "module": "http",
-            "timestamp": 1730241747,
-        },
-    ]
-    for request in requests:
-        line = json.dumps(request)
-        print("Example request:")
-        print(line)
-        print()
-        print("Response(s):")
-        handle_line(line)
-        print()
-    return
+        for key, value in r.notable_headers.items():
+            observations.append(
+                {
+                    "operation": request["operation"],
+                    "resource": url,
+                    "module": "http",
+                    "attribute": key,
+                    "value": value,
+                    "timestamp": r.timestamp,
+                }
+            )
+        return observations
 
 
 def main():
-    if len(sys.argv) == 2 and sys.argv[1] == "example":
-        run_example()
-        return
-    main_loop()
+    mod = ModHTTP()
+    mod.main()
 
 
 if __name__ == "__main__":

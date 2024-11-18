@@ -4,9 +4,6 @@ from typing import Any
 
 import requests
 
-from secdb.utils import normalize_url
-
-
 class ModuleRequest(dict):
     def __init__(
         self,
@@ -143,7 +140,7 @@ class ConfigTarget(dict):
     ):
         dict.__init__(
             self,
-            resource=normalize_url(resource),
+            resource=resource,
             module=module,
             id=id,
             first_seen=first_seen,
@@ -161,7 +158,7 @@ class ConfigTarget(dict):
 
 class Discovery:
     def __init__(self, resource, module, source, timestamp=None):
-        self.resource = normalize_url(resource)
+        self.resource = resource
         self.module = module
         self.source = source
         if not timestamp:
@@ -188,7 +185,7 @@ class Observation(dict):
             timestamp = datetime.datetime.now()
         dict.__init__(
             self,
-            resource=normalize_url(resource),
+            resource=resource,
             module=module,
             attribute=attribute,
             value=str(value),

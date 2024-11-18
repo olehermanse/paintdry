@@ -19,14 +19,29 @@
     {
       "module": "http",
       "resource": "https://northern.tech"
+    },
+    {
+      "module": "github",
+      "resource": "NorthernTechHQ"
+    },
+    {
+      "module": "github",
+      "resource": "mendersoftware"
+    },
+    {
+      "module": "github",
+      "resource": "cfengine"
     }
   ],
   "modules": {
     "dns": {
-      "command": "python3 modules/moddns.py"
+      "command": "python3 /secdb/modules/moddns.py"
     },
     "http": {
-      "command": "python3 modules/modhttp.py"
+      "command": "python3 /secdb/modules/modhttp.py"
+    },
+    "github": {
+      "command": "python3 /secdb/modules/modgithub.py"
     }
   }
 }

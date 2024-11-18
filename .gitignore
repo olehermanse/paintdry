@@ -20,11 +20,13 @@
 # Go workspace file
 go.work
 
-/data/
-/state/
+/mount-data/
+/mount-state/
 __pycache__
 
 gui/node_modules
 gui/dist
 
 /venv/
+api_cache.sqlite
+secrets.json

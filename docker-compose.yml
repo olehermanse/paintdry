@@ -2,7 +2,7 @@ services:
   postgres:
     image: postgres
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - ./mount-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
@@ -32,8 +32,7 @@ services:
       context: .
       dockerfile: updater.Dockerfile
     volumes:
-      - ./state:/secdb/state
-    command: bash updater.sh
+      - ./mount-state:/secdb/mount-state
     environment:
       - PGHOST=postgres
       - PGDATABASE=postgres
@@ -41,3 +40,9 @@ services:
       - PGPASSWORD=postgres
     depends_on:
       - postgres
+  downloader:
+    build:
+      context: .
+      dockerfile: downloader.Dockerfile
+    volumes:
+      - ./mount-state:/secdb/mount-state
