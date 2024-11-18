@@ -1,4 +1,4 @@
-FROM fedora:40@sha256:d0207dbb078ee261852590b9a8f1ab1f8320547be79a2f39af9f3d23db33735e AS build
+FROM fedora:40@sha256:7cdd2b48396929bb8723ea2fa60e03bee39cc22e2a853cbd891587fab4eb1bc9 AS build
 # RUN apk update && apk upgrade
 # RUN apk add --no-cache bash git openssh npm python3 py3-pip curl libpq-dev postgresql-client
 RUN yum update -y

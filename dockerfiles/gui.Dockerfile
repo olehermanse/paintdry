@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7-labs@sha256:b99fecfe00268a8b556fad7d9c37ee25d716ae08a5d7320e6d51c4dd83246894
-FROM node:18@sha256:ddd173cd94537e155b378342056e0968e8299eb3da9dd5d412d3b7f796ac38c0 AS build
+FROM node:18@sha256:64bf6df8b584404b4ced498ffb5440b259e8087ce76e466c3946ea3ce29acfed AS build
 WORKDIR /secdb/gui/
 COPY ./gui/package.json /secdb/gui/package.json
 COPY ./gui/package-lock.json /secdb/gui/package-lock.json
@@ -8,7 +8,7 @@ COPY --exclude=node_modules --exclude=*.md ./gui/ /secdb/gui/
 RUN rm -rf /secdb/gui/dist
 RUN npm run build
 
-FROM fedora:40@sha256:d0207dbb078ee261852590b9a8f1ab1f8320547be79a2f39af9f3d23db33735e AS serve
+FROM fedora:40@sha256:7cdd2b48396929bb8723ea2fa60e03bee39cc22e2a853cbd891587fab4eb1bc9 AS serve
 RUN yum update -y
 RUN yum install -y python3
 RUN yum install -y python3-pip
