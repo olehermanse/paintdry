@@ -9,7 +9,7 @@ services:
       - POSTGRES_PASSWORD=postgres
   pgweb:
     image: sosedoff/pgweb
-    command: pgweb --debug --url=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable --listen=9000
+    command: pgweb --debug --url=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable --listen=9000 --open-retry=10
     ports:
       - "9000:9000"
     depends_on:
@@ -17,7 +17,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: gui.Dockerfile
+      dockerfile: dockerfiles/gui.Dockerfile
     command: python3 -m secdb serve
     ports:
       - "8000:8000"
@@ -30,7 +30,7 @@ services:
   updater:
     build:
       context: .
-      dockerfile: updater.Dockerfile
+      dockerfile: dockerfiles/updater.Dockerfile
     volumes:
       - ./mount-state:/secdb/mount-state
     environment:
@@ -43,6 +43,6 @@ services:
   downloader:
     build:
       context: .
-      dockerfile: downloader.Dockerfile
+      dockerfile: dockerfiles/downloader.Dockerfile
     volumes:
       - ./mount-state:/secdb/mount-state

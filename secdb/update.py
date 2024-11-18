@@ -156,7 +156,7 @@ class Updater:
 
     def get_module(self, module: str):
         if not module in self.modules:
-            config = JsonFile("config.json")
+            config = JsonFile("config/config.json")
             command = config['modules'][module]['command']
             self.modules[module] = Module(module, command)
         return self.modules[module]
@@ -285,7 +285,7 @@ class Updater:
         clear_get_cache()
 
         # Read config
-        config = JsonFile("config.json")
+        config = JsonFile("config/config.json")
 
         # Setup state
         state = ensure_folder("./state")

@@ -5,10 +5,12 @@ RUN yum update -y
 
 RUN yum install -y openssl
 RUN yum install -y gcc
-RUN yum install -y git
 RUN yum install -y python3
 RUN yum install -y python3-pip
 RUN yum install -y python3-devel
+
+RUN yum install -y postgresql
+RUN yum install -y libpq-devel
 
 RUN yum install -y nodejs
 RUN npm install --global prettier
@@ -17,9 +19,9 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /secdb
 COPY requirements.txt /secdb/
 RUN pip install -r requirements.txt
-COPY ./config.json /secdb/config.json
-COPY ./secrets.json /secdb/secrets.json
+COPY ./scripts/updater.sh /secdb/scripts/updater.sh
+COPY ./schema.sql /secdb/schema.sql
+COPY ./config/config.json /secdb/config/config.json
 COPY ./secdb /secdb/secdb
 COPY ./modules /secdb/modules
-COPY ./downloader.sh /secdb/downloader.sh
-CMD ["bash", "downloader.sh"]
+CMD ["bash", "scripts/updater.sh"]
