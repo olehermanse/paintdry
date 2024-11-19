@@ -9,7 +9,7 @@ function a11yProps(index: number) {
   };
 }
 
-const tabs = ["resources", "observations", "config"];
+const tabs = ["resources", "observations", "changes", "history", "config"];
 
 function choose_index(value: string): number {
   for (let i = 0; i < tabs.length; i++) {
@@ -48,7 +48,9 @@ const Layout = () => {
           >
             <Tab label="Resources" {...a11yProps(0)} />
             <Tab label="Observations" {...a11yProps(1)} />
-            <Tab label="Config" {...a11yProps(2)} />
+            <Tab label="Changes" {...a11yProps(2)} />
+            <Tab label="History" {...a11yProps(3)} />
+            <Tab label="Config" {...a11yProps(4)} />
           </Tabs>
         </Box>
       </Box>

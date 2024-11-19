@@ -41,6 +41,28 @@ def api_get_observation(id):
         abort(404)
     return result
 
+@app.route("/api/history")
+def api_history():
+    return database.get_history()
+
+@app.route("/api/history/<int:id>")
+def api_get_history(id):
+    result = database.get_history(id)
+    if not result:
+        abort(404)
+    return result
+
+@app.route("/api/changes")
+def api_changes():
+    return database.get_changes()
+
+@app.route("/api/changes/<int:id>")
+def api_get_changes(id):
+    result = database.get_changes(id)
+    if not result:
+        abort(404)
+    return result[0]
+
 @app.route("/")
 def redirect_to_ui():
     return redirect("/ui/")

@@ -54,6 +54,49 @@ function App() {
             path="/ui/observations/:id"
             element={<SingleJsonView api={"/api/observations"} />}
           />
+          <Route
+            path="/ui/changes"
+            element={
+              <TableView
+                api={"/api/changes"}
+                header={"Changes"}
+                fields={[
+                  "id",
+                  "resource",
+                  "module",
+                  "attribute",
+                  "old_value",
+                  "new_value",
+                  "timestamp",
+                ]}
+              />
+            }
+          />
+          <Route
+            path="/ui/changes/:id"
+            element={<SingleJsonView api={"/api/changes"} />}
+          />
+          <Route
+            path="/ui/history"
+            element={
+              <TableView
+                api={"/api/history"}
+                header={"History"}
+                fields={[
+                  "id",
+                  "resource",
+                  "module",
+                  "attribute",
+                  "value",
+                  "timestamp",
+                ]}
+              />
+            }
+          />
+          <Route
+            path="/ui/history/:id"
+            element={<SingleJsonView api={"/api/history"} />}
+          />
           <Route path="/ui/config" element={<ConfigView />} />
           <Route path="*" element={<div> Page not found... </div>} />
         </Route>

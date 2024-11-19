@@ -212,3 +212,46 @@ class Database:
         if len(results) == 1:
             return results[0]
         return None
+
+    def get_history(self, id:int|None=None) -> list[dict]:
+        singular = (id is not None)
+        objects = self._select(
+            "history",
+            [
+                "id",
+                "resource",
+                "module",
+                "attribute",
+                "value",
+                "timestamp",
+            ],
+            {"id": id} if singular else None,
+        )
+        if not objects:
+            return []
+        results = []
+        for object in objects:
+            results.append(object)
+        return results
+
+    def get_changes(self, id:int|None=None) -> list[dict]:
+        singular = (id is not None)
+        objects = self._select(
+            "changes",
+            [
+                "id",
+                "resource",
+                "module",
+                "attribute",
+                "old_value",
+                "new_value",
+                "timestamp",
+            ],
+            {"id": id} if singular else None,
+        )
+        if not objects:
+            return []
+        results = []
+        for object in objects:
+            results.append(object)
+        return results
