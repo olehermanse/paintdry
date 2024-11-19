@@ -1,36 +1,12 @@
 {
   "targets": [
     {
-      "module": "http",
-      "resource": "https://cfengine.com"
+      "modules": ["http", "dns"],
+      "resources": ["https://cfengine.com", "https://mender.io", "https://alvaldi.com", "https://northern.tech"]
     },
     {
-      "module": "dns",
-      "resource": "cfengine.com"
-    },
-    {
-      "module": "http",
-      "resource": "https://mender.io"
-    },
-    {
-      "module": "http",
-      "resource": "https://alvaldi.com"
-    },
-    {
-      "module": "http",
-      "resource": "https://northern.tech"
-    },
-    {
-      "module": "github",
-      "resource": "NorthernTechHQ"
-    },
-    {
-      "module": "github",
-      "resource": "mendersoftware"
-    },
-    {
-      "module": "github",
-      "resource": "cfengine"
+      "modules": ["github"],
+      "resources": ["NorthernTechHQ", "mendersoftware", "cfengine"]
     }
   ],
   "modules": {

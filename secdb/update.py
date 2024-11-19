@@ -253,7 +253,7 @@ class Updater:
         for module in entry.modules:
             self._process(resource, module)
 
-    def update_config(self, target: ConfigTarget):
+    def process_config_target(self, target: ConfigTarget):
         resource = Resource.from_target(target)
         self.database.upsert_resource(resource, "config.json")
 
@@ -304,8 +304,10 @@ class Updater:
 
         # Actual processing
         for target in config["targets"]:
-            target = ConfigTarget(target["resource"], target["module"])
-            self.update_config(target)
+            for module in target["modules"]:
+                for resource in target["resources"]:
+                    target = ConfigTarget(resource, module)
+                    self.process_config_target(target)
 
         self.setup_requests()
         self.process_responses()

@@ -3,7 +3,7 @@ from time import sleep
 
 import psycopg2
 
-from secdb.lib import ConfigTarget, Observation, Resource
+from secdb.lib import Observation, Resource
 
 
 def connect_loop():

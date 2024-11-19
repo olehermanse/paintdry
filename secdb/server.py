@@ -50,7 +50,7 @@ def api_get_history(id):
     result = database.get_history(id)
     if not result:
         abort(404)
-    return result
+    return result[0]
 
 @app.route("/api/changes")
 def api_changes():
