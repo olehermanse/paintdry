@@ -63,7 +63,7 @@ def env_var(key):
 
 def main():
     if len(sys.argv) != 3:
-        print("Usage: download_repos.py <secrets.json> <target_folder>")
+        print("Usage: github_downloader.py <secrets.json> <target_folder>")
         sys.exit(1)
 
     secrets_json = sys.argv[1]

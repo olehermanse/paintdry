@@ -6,7 +6,7 @@ import pathlib
 from time import sleep
 from subprocess import Popen, PIPE, STDOUT
 
-from secdb.utils import JsonFile, ensure_folder, timestamp
+from secdb.utils import JsonFile, ensure_folder, sha, timestamp
 from secdb.database import Database
 from secdb.lib import (
     ModuleRequest,
@@ -143,9 +143,21 @@ class Module:
         self._dump_backlog()
         self._start_process()
 
+    def _write_requests_with_checksum(self, requests):
+        folder = self._input_folder
+        data = json.loads(json.dumps(requests))
+        for element in data:
+            del element["timestamp"]
+        filename = sha(json.dumps(data))
+        path = folder + "/" + filename + ".json"
+        if os.path.exists(path):
+            return
+        dump_json_atomic(path, requests)
+
     def write_requests(self, requests: list[ModuleRequest]):
-        filename = self._next_filename()
-        dump_json_atomic(filename, requests)
+        # filename = self._next_filename()
+        # dump_json_atomic(filename, requests)
+        self._write_requests_with_checksum(requests)
 
     def send_requests(self, requests: list[ModuleRequest]):
         self._request_backlog.extend(requests)
