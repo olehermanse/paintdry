@@ -1,7 +1,7 @@
 set -e
 set -x
 
-find /secdb/mount-state/modules/ -name '*.json' -delete
+find /secdb/mount-state/modules/ -name '*.json' -delete || true
 
 sleep 10
 psql -f schema.sql

@@ -6,7 +6,7 @@ import requests
 from functools import cache
 from urllib.parse import urlparse
 from modlib import ModBase, now, normalize_url, url_to_hostname
-
+from random import randint
 
 class Response:
     """Wrapper around a response from requests, exposing only what we need"""
@@ -97,6 +97,9 @@ class ModHTTP(ModBase):
     def observation(self, request: dict) -> list[dict]:
         url = normalize_url(request["resource"])
         r = http_get(url)
+        status_code = r.status_code
+        if randint(0,100) < 10:
+            status_code = 404
         observations = []
         observations.append(
             {
@@ -104,7 +107,7 @@ class ModHTTP(ModBase):
                 "resource": url,
                 "module": "http",
                 "attribute": "status_code",
-                "value": r.status_code,
+                "value": status_code,
                 "timestamp": r.timestamp,
             }
         )

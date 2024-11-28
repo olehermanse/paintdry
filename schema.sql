@@ -46,7 +46,8 @@ RETURNS TRIGGER AS $observations_to_history_function$
 BEGIN
     IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE' AND NEW.value != OLD.value) THEN
         INSERT INTO history(resource, module, attribute, value, timestamp)
-        VALUES (NEW.resource, NEW.module, NEW.attribute, NEW.value, NEW.last_changed);
+        VALUES (NEW.resource, NEW.module, NEW.attribute, NEW.value, NEW.last_changed)
+        ON CONFLICT DO NOTHING;
     END IF;
     RETURN NULL;
 END;
@@ -61,7 +62,8 @@ RETURNS TRIGGER AS $observations_to_changes_function$
 BEGIN
     IF (NEW.value != OLD.value) THEN
         INSERT INTO changes(resource, module, attribute, old_value, new_value, timestamp)
-        VALUES (NEW.resource, NEW.module, NEW.attribute, OLD.value, NEW.value, NEW.last_changed);
+        VALUES (NEW.resource, NEW.module, NEW.attribute, OLD.value, NEW.value, NEW.last_changed)
+        ON CONFLICT DO NOTHING;
     END IF;
     RETURN NULL;
 END;

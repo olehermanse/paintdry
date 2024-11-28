@@ -43,8 +43,9 @@ def response_to_observation(response: ModuleResponse) -> Observation:
     return Observation(**data)
 
 class Module:
-    def __init__(self, name, command):
+    def __init__(self, name, command, slow):
         self.name = name
+        self.slow = slow
         print(f"Starting '{name}' module")
         assert not " " in name
         assert not "/" in name
@@ -68,6 +69,8 @@ class Module:
         self._request_counter = 0
 
     def _wait_process(self):
+        if self.slow:
+            return
         if self._process is None:
             return
 
@@ -100,12 +103,17 @@ class Module:
                 os.unlink(entry.path)
 
     def process_all_responses(self, callback):
+        if self.slow:
+            self.process_responses(callback)
+            return
         self._wait_process() # Finish current process
-        self._maybe_start()  # Start new one if more requests
+        self.start()  # Start new one if more requests
         self._wait_process() # Finish last one
         self.process_responses(callback)
 
     def _start_process(self):
+        if self.slow:
+            return
         self._wait_process()
         self._process = Popen(
             self._command,
@@ -126,7 +134,7 @@ class Module:
         self.write_requests(self._request_backlog)
         self._request_backlog = []
 
-    def _maybe_start(self):
+    def start(self):
         # TODO check if process already exited so we can start another
         if self._process:
             return
@@ -135,13 +143,13 @@ class Module:
         self._dump_backlog()
         self._start_process()
 
-    def write_requests(self, requests):
+    def write_requests(self, requests: list[ModuleRequest]):
         filename = self._next_filename()
         dump_json_atomic(filename, requests)
 
     def send_requests(self, requests: list[ModuleRequest]):
         self._request_backlog.extend(requests)
-        self._maybe_start()
+        self.start()
 
 class Updater:
     def __init__(self):
@@ -152,30 +160,21 @@ class Updater:
 
     def send_requests(self, name: str, requests: list[ModuleRequest]):
         module = self.get_module(name)
+        if not module:
+            return
         module.send_requests(requests)
 
-    def get_module(self, module: str):
-        if not module in self.modules:
+    def get_module(self, name: str) -> Module | None:
+        if not name in self.modules:
             config = JsonFile("config/config.json")
-            command = config['modules'][module]['command']
-            self.modules[module] = Module(module, command)
-        return self.modules[module]
-
-    def receive_responses(self, module: str) -> list[ModuleResponse]:
-        process = self.get_module(module)
-        responses: list[ModuleResponse] = []
-        while True:
-            response = process.stdout.readline().strip()
-            if not response:
-                break
-            try:
-                data = json.loads(response)
-            except:
-                print("Failed to parse JSON;")
-                print(response)
-                continue
-            responses.append(ModuleResponse.convert(data))
-        return responses
+            if name not in config["modules"]:
+                print(f"Warning: Module '{name}' missing")
+                return None
+            module = config['modules'][name]
+            command = module['command']
+            slow = module.get("slow", False)
+            self.modules[name] = Module(name, command, slow)
+        return self.modules[name]
 
     def process_discovery_backlog(self):
         modules = {}
@@ -193,6 +192,8 @@ class Updater:
 
         for name, requests in modules.items():
             module = self.get_module(name)
+            if not module:
+                continue
             module.write_requests(requests)
         self.discovery_backlog = []
 
@@ -235,6 +236,8 @@ class Updater:
                     return self.send_request_for_resource(resource, module)
                 case "github":
                     return self.send_request_for_resource(resource, module)
+                case "example":
+                    return self.send_request_for_resource(resource, module)
                 case other:
                     sys.exit(f"Target '{module}' not supported!")
         return
@@ -255,7 +258,10 @@ class Updater:
 
     def process_config_target(self, target: ConfigTarget):
         resource = Resource.from_target(target)
-        self.database.upsert_resource(resource, "config.json")
+        module = self.get_module(target.module)
+        assert module is not None
+        request = ModuleRequest(operation="discovery", resource=target.resource, module=target.module, source="config.json", timestamp=now())
+        module.send_requests([request])
 
     def setup_requests(self):
         for resource in self.database.get_resources():
@@ -302,13 +308,20 @@ class Updater:
         snapshot_name = f"{str(seq).zfill(5)}-{time}"
         self.snapshot = ensure_folder(os.path.join(snapshots, snapshot_name))
 
-        # Actual processing
+        # Start modules, letting them process pre-existing request files:
+        for module in config["modules"]:
+            module = self.get_module(module)
+            assert module is not None
+            module.start()
+
+        # Send requests based on config.json:
         for target in config["targets"]:
             for module in target["modules"]:
                 for resource in target["resources"]:
-                    target = ConfigTarget(resource, module)
-                    self.process_config_target(target)
+                    print(f"Processing config: {module} {resource}")
+                    self.process_config_target(ConfigTarget(resource, module))
 
+        # Send requests based on resources table:
         self.setup_requests()
         self.process_responses()
 

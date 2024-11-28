@@ -10,7 +10,7 @@ def normalize_org(url: str) -> str:
     url = strip_prefix("http://", url)
     url = strip_prefix("https://", url)
     url = strip_prefix("www.", url)
-    url = strip_prefix("github.com", url)
+    url = strip_prefix("github.com/", url)
     return url
 
 

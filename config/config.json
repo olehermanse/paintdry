@@ -17,7 +17,8 @@
       "command": "python3 /secdb/modules/modhttp.py"
     },
     "github": {
-      "command": "python3 /secdb/modules/modgithub.py"
+      "command": "python3 /secdb/modules/modgithub.py",
+      "slow": true
     }
   }
 }
