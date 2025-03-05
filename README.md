@@ -8,16 +8,16 @@ Example data:
 
 ```SQL
 SELECT * FROM resources;
-        id |        resource        | modules |   source    |         first_seen         |         last_seen
+        id |        resource        | module  |   source    |         first_seen         |         last_seen
 -----------+------------------------+---------+-------------+----------------------------+----------------------------
-         1 | https://cfengine.com/  | {http}  | config.json | 2024-10-24 13:30:06.018109 | 2024-10-24 13:30:28.72942
-         2 | https://mender.io/     | {http}  | config.json | 2024-10-24 13:30:06.02154  | 2024-10-24 13:30:28.798459
-         3 | https://alvaldi.com/   | {http}  | config.json | 2024-10-24 13:30:06.024935 | 2024-10-24 13:30:28.854112
-         4 | https://northern.tech/ | {http}  | config.json | 2024-10-24 13:30:06.027193 | 2024-10-24 13:30:28.92181
-         5 | http://cfengine.com/   | {http}  | http        | 2024-10-24 13:30:06.211524 | 2024-10-24 13:30:29.094302
-         6 | http://mender.io/      | {http}  | http        | 2024-10-24 13:30:06.41116  | 2024-10-24 13:30:29.270675
-         7 | http://alvaldi.com/    | {http}  | http        | 2024-10-24 13:30:06.567133 | 2024-10-24 13:30:29.408296
-         8 | http://northern.tech/  | {http}  | http        | 2024-10-24 13:30:06.815025 | 2024-10-24 13:30:29.498884
+         1 | https://cfengine.com/  | http    | config.json | 2024-10-24 13:30:06.018109 | 2024-10-24 13:30:28.72942
+         2 | https://mender.io/     | http    | config.json | 2024-10-24 13:30:06.02154  | 2024-10-24 13:30:28.798459
+         3 | https://alvaldi.com/   | http    | config.json | 2024-10-24 13:30:06.024935 | 2024-10-24 13:30:28.854112
+         4 | https://northern.tech/ | http    | config.json | 2024-10-24 13:30:06.027193 | 2024-10-24 13:30:28.92181
+         5 | http://cfengine.com/   | http    | http        | 2024-10-24 13:30:06.211524 | 2024-10-24 13:30:29.094302
+         6 | http://mender.io/      | http    | http        | 2024-10-24 13:30:06.41116  | 2024-10-24 13:30:29.270675
+         7 | http://alvaldi.com/    | http    | http        | 2024-10-24 13:30:06.567133 | 2024-10-24 13:30:29.408296
+         8 | http://northern.tech/  | http    | http        | 2024-10-24 13:30:06.815025 | 2024-10-24 13:30:29.498884
 (8 rows)
 
 SELECT * FROM observations;
@@ -37,3 +37,33 @@ SELECT * FROM observations;
          4 | https://northern.tech/ | http   | status_code       | 200                    | 2024-10-24 13:30:06.812773 | 2024-10-24 13:30:06.812773 | 2024-10-24 13:30:29.496963
 (12 rows)
 ```
+
+## Setup
+
+Manually create `config/secrets.json`:
+
+```
+{
+  "github_username": "olehermanse",
+  "github_access_token": "PUT_GITHUB_PERSONAL_ACCESS_TOKEN_CLASSIC_HERE",
+  "github_organizations": ["NorthernTechHQ", "cfengine", "mendersoftware"]
+}
+```
+
+Also, edit `config/config.json` to avoid using our default config (especially if you don't have access to those repos).
+
+## Run
+
+After editing config and secrets as shown above, run the application with docker-compose:
+
+```
+docker compose build && docker compose up
+```
+
+Open the UI:
+
+http://127.0.0.1:8000/ui
+
+Or the pgweb UI:
+
+http://127.0.0.1:9000
