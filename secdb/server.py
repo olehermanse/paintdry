@@ -10,6 +10,7 @@ database = Database()
 
 app = Flask(__name__)
 
+
 @app.route("/api/resources")
 def api_resources():
     return database.get_resources()
@@ -34,6 +35,7 @@ def api_config():
 def api_observations():
     return database.get_observations()
 
+
 @app.route("/api/observations/<int:id>")
 def api_get_observation(id):
     result = database.get_observation(id)
@@ -41,9 +43,11 @@ def api_get_observation(id):
         abort(404)
     return result
 
+
 @app.route("/api/history")
 def api_history():
     return database.get_history()
+
 
 @app.route("/api/history/<int:id>")
 def api_get_history(id):
@@ -52,9 +56,11 @@ def api_get_history(id):
         abort(404)
     return result[0]
 
+
 @app.route("/api/changes")
 def api_changes():
     return database.get_changes()
+
 
 @app.route("/api/changes/<int:id>")
 def api_get_changes(id):
@@ -62,6 +68,7 @@ def api_get_changes(id):
     if not result:
         abort(404)
     return result[0]
+
 
 @app.route("/")
 def redirect_to_ui():

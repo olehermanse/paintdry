@@ -4,6 +4,7 @@ from typing import Any
 
 import requests
 
+
 class ModuleRequest(dict):
     def __init__(
         self,

@@ -7,6 +7,7 @@ import hashlib
 import datetime
 from urllib.parse import urlparse
 
+
 def timestamp():
     return datetime.datetime.now().isoformat()
 

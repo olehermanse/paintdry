@@ -1,7 +1,7 @@
 import socket
 import time
 from functools import cache
-from modlib import ModBase, now, url_to_hostname, normalize_hostname
+from modlib import ModBase, now, normalize_hostname
 
 
 @cache

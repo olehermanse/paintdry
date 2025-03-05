@@ -1,10 +1,4 @@
-import sys
-import json
-import fileinput
-import datetime
-from functools import cache
-from urllib.parse import urlparse
-from modlib import ModBase, now, normalize_url, url_to_hostname
+from modlib import ModBase, now
 
 
 class ModExample(ModBase):
@@ -26,7 +20,7 @@ class ModExample(ModBase):
         ]
 
     def discovery(self, request: dict) -> list[dict]:
-        if (request["resource"] != "localhost"):
+        if request["resource"] != "localhost":
             return []
         return [
             {
@@ -39,7 +33,7 @@ class ModExample(ModBase):
         ]
 
     def observation(self, request: dict) -> list[dict]:
-        if (request["resource"] != "localhost"):
+        if request["resource"] != "localhost":
             return []
         return [
             {

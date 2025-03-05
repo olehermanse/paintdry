@@ -4,7 +4,6 @@ import sys
 import json
 import fileinput
 import datetime
-from functools import cache
 from urllib.parse import urlparse
 
 
@@ -101,7 +100,7 @@ class ModBase:
     def handle_single_file(self, input_dir, name, output_dir):
         input_file = Path(input_dir, name)
         output_file = Path(output_dir, name)
-        with open(input_dir + "/" +  name, "r") as f:
+        with open(input_dir + "/" + name, "r") as f:
             data = json.loads(f.read())
         results = []
         if type(data) is dict:

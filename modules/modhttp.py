@@ -1,13 +1,8 @@
-import sys
-import json
-import fileinput
-import datetime
 import requests
 from time import sleep
 from functools import cache
-from urllib.parse import urlparse
 from modlib import ModBase, now, normalize_url, url_to_hostname
-from random import randint
+
 
 class Response:
     """Wrapper around a response from requests, exposing only what we need"""
@@ -40,7 +35,7 @@ class Response:
 def http_get(url: str):
     sleep(1)
     r = Response(requests.get(url, allow_redirects=False))
-    if (r.status_code != 200):
+    if r.status_code != 200:
         sleep(3)
     return r
 

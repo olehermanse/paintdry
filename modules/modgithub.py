@@ -1,9 +1,9 @@
 import datetime
-from pathlib import Path
 from functools import cache
 from modlib import ModBase, strip_prefix, now
 import os
 import json
+
 
 @cache
 def normalize_resource(url: str) -> str:
@@ -57,13 +57,14 @@ class ModGitHub(ModBase):
             if not os.path.exists(entry.path + "/metadata.json"):
                 continue
             discoveries.append(
-            {
-                "operation": "discovery",
-                "resource": resource,
-                "module": "github",
-                "source": request["resource"],
-                "timestamp": request["timestamp"],
-            })
+                {
+                    "operation": "discovery",
+                    "resource": resource,
+                    "module": "github",
+                    "source": request["resource"],
+                    "timestamp": request["timestamp"],
+                }
+            )
 
         return discoveries
 
@@ -71,13 +72,15 @@ class ModGitHub(ModBase):
         resource = normalize_resource(request["resource"])
         if not "/" in resource:
             return self.discover_repos(request)
-        return [{
-            "operation": "discovery",
-            "resource": resource,
-            "module": "github",
-            "source": request["source"],
-            "timestamp": request["timestamp"],
-        }]
+        return [
+            {
+                "operation": "discovery",
+                "resource": resource,
+                "module": "github",
+                "source": request["source"],
+                "timestamp": request["timestamp"],
+            }
+        ]
 
     def observation_org(self, request: dict) -> list[dict]:
         org = normalize_resource(request["resource"])
@@ -118,23 +121,27 @@ class ModGitHub(ModBase):
         for key, name in keys.items():
             if key not in data:
                 continue
-            observations.append({
-                "operation": request["operation"],
-                "resource": repo,
-                "module": "github",
-                "attribute": name,
-                "value": data[key],
-                "timestamp": timestamp,
-            })
+            observations.append(
+                {
+                    "operation": request["operation"],
+                    "resource": repo,
+                    "module": "github",
+                    "attribute": name,
+                    "value": data[key],
+                    "timestamp": timestamp,
+                }
+            )
         if "license" in data and data["license"]:
-            observations.append({
-            "operation": request["operation"],
-            "resource": repo,
-            "module": "github",
-            "attribute": "license",
-            "value": data["license"]["name"],
-            "timestamp": timestamp,
-        })
+            observations.append(
+                {
+                    "operation": request["operation"],
+                    "resource": repo,
+                    "module": "github",
+                    "attribute": "license",
+                    "value": data["license"]["name"],
+                    "timestamp": timestamp,
+                }
+            )
         return observations
 
     def observation(self, request: dict) -> list[dict]:

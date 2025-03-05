@@ -213,8 +213,8 @@ class Database:
             return results[0]
         return None
 
-    def get_history(self, id:int|None=None) -> list[dict]:
-        singular = (id is not None)
+    def get_history(self, id: int | None = None) -> list[dict]:
+        singular = id is not None
         objects = self._select(
             "history",
             [
@@ -234,8 +234,8 @@ class Database:
             results.append(object)
         return results
 
-    def get_changes(self, id:int|None=None) -> list[dict]:
-        singular = (id is not None)
+    def get_changes(self, id: int | None = None) -> list[dict]:
+        singular = id is not None
         objects = self._select(
             "changes",
             [

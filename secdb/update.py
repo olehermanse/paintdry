@@ -22,12 +22,14 @@ from secdb.lib import (
 def now() -> int:
     return int(datetime.datetime.now().timestamp())
 
+
 def dump_json_atomic(filename, data):
     string = json.dumps(data) + "\n"
     tmpfile = filename + ".tmp"
     with open(tmpfile, "w") as f:
         f.write(string)
     os.replace(tmpfile, filename)
+
 
 def response_to_discovery(response: ModuleResponse) -> Discovery:
     data = {**response}
@@ -42,6 +44,7 @@ def response_to_observation(response: ModuleResponse) -> Observation:
     del data["operation"]
     return Observation(**data)
 
+
 class Module:
     def __init__(self, name, command, slow):
         self.name = name
@@ -52,14 +55,16 @@ class Module:
         assert not "," in name
         assert not "." in name
         assert not "'" in name
-        assert not "\"" in name
+        assert not '"' in name
         assert not "\n" in name
         module_folder = f"/secdb/mount-state/modules/{name}"
         input_folder = f"{module_folder}/requests"
         output_folder = f"{module_folder}/responses"
         pathlib.Path(input_folder).mkdir(parents=True, exist_ok=True)
         pathlib.Path(output_folder).mkdir(parents=True, exist_ok=True)
-        command = f"cd '{module_folder}' && {command} '{input_folder}' '{output_folder}'"
+        command = (
+            f"cd '{module_folder}' && {command} '{input_folder}' '{output_folder}'"
+        )
         self._command = command
         self._module_folder = module_folder
         self._input_folder = input_folder
@@ -106,9 +111,9 @@ class Module:
         if self.slow:
             self.process_responses(callback)
             return
-        self._wait_process() # Finish current process
+        self._wait_process()  # Finish current process
         self.start()  # Start new one if more requests
-        self._wait_process() # Finish last one
+        self._wait_process()  # Finish last one
         self.process_responses(callback)
 
     def _start_process(self):
@@ -163,6 +168,7 @@ class Module:
         self._request_backlog.extend(requests)
         self.start()
 
+
 class Updater:
     def __init__(self):
         self.database = Database()
@@ -216,25 +222,27 @@ class Updater:
             source = ""  # TODO FIXME
         requests = []
         timestamp = now()
-        requests.append(ModuleRequest(
-            operation="discovery",
-            resource=resource.resource,
-            module=module,
-            source=source,
-            timestamp=timestamp,
-        ))
-        requests.append(ModuleRequest(
-            operation="observation",
-            resource=resource.resource,
-            module=module,
-            timestamp=timestamp,
-        ))
+        requests.append(
+            ModuleRequest(
+                operation="discovery",
+                resource=resource.resource,
+                module=module,
+                source=source,
+                timestamp=timestamp,
+            )
+        )
+        requests.append(
+            ModuleRequest(
+                operation="observation",
+                resource=resource.resource,
+                module=module,
+                timestamp=timestamp,
+            )
+        )
         self.send_requests(module, requests)
         print(f"Sent requests to '{module}' module for '{resource.resource}'")
 
-    def _process(
-        self, identifier: str, module: str
-    ):
+    def _process(self, identifier: str, module: str):
         key = module + " - " + identifier
         if key in self.cache:
             return ([], [])
@@ -260,7 +268,13 @@ class Updater:
         resource = Resource.from_target(target)
         module = self.get_module(target.module)
         assert module is not None
-        request = ModuleRequest(operation="discovery", resource=target.resource, module=target.module, source="config.json", timestamp=now())
+        request = ModuleRequest(
+            operation="discovery",
+            resource=target.resource,
+            module=target.module,
+            source="config.json",
+            timestamp=now(),
+        )
         module.send_requests([request])
 
     def setup_requests(self):
@@ -277,11 +291,11 @@ class Updater:
 
     def process_responses(self):
         # (Non-blocking) Opportunistically process responses which are ready:
-        for name,module in self.modules.items():
+        for name, module in self.modules.items():
             callback = lambda response: self.process_response(name, response)
             module.process_responses(callback)
         # (Blocking) Wait for everything to finish:
-        for name,module in self.modules.items():
+        for name, module in self.modules.items():
             callback = lambda response: self.process_response(name, response)
             module.process_all_responses(callback)
         self.process_discovery_backlog()
