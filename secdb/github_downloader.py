@@ -4,6 +4,7 @@ import sys
 import requests
 import requests_cache
 from datetime import timedelta, datetime
+from time import sleep
 
 requests_cache.install_cache("api_cache", expire_after=timedelta(hours=2))
 token = None
@@ -12,6 +13,7 @@ token = None
 def github_get(url):
     global token
     print("GET: " + url)
+    sleep(1)
     r = requests.get(
         url,
         headers={
@@ -19,6 +21,8 @@ def github_get(url):
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
+    if r.status_code != 200:
+        sleep(3)
     assert r.status_code == 200
     result = r.json()
     # print(result)

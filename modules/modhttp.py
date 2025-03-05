@@ -3,6 +3,7 @@ import json
 import fileinput
 import datetime
 import requests
+from time import sleep
 from functools import cache
 from urllib.parse import urlparse
 from modlib import ModBase, now, normalize_url, url_to_hostname
@@ -37,7 +38,10 @@ class Response:
 
 @cache
 def http_get(url: str):
+    sleep(1)
     r = Response(requests.get(url, allow_redirects=False))
+    if (r.status_code != 200):
+        sleep(3)
     return r
 
 
