@@ -10,8 +10,7 @@ RUN npm run build
 
 FROM fedora:40@sha256:7cdd2b48396929bb8723ea2fa60e03bee39cc22e2a853cbd891587fab4eb1bc9 AS serve
 RUN yum update -y
-RUN yum install -y python3
-RUN yum install -y python3-pip
+RUN yum install -y python3 python3-pip
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 WORKDIR /secdb
