@@ -98,8 +98,8 @@ class ModHTTP(ModBase):
         url = normalize_url(request["resource"])
         r = http_get(url)
         status_code = r.status_code
-        if randint(0,100) < 10:
-            status_code = 404
+        # if randint(0,100) < 10:
+        #     status_code = 404
         observations = []
         observations.append(
             {
