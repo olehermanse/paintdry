@@ -1,11 +1,11 @@
 CREATE TABLE IF NOT EXISTS resources (
     id serial PRIMARY KEY,
     resource TEXT NOT NULL,
-    modules TEXT[] NOT NULL,
+    module TEXT NOT NULL,
     source TEXT NOT NULL,
-    first_seen TIMESTAMP DEFAULT NOW(),
-    last_seen TIMESTAMP DEFAULT NOW(),
-    CONSTRAINT resources_constraint UNIQUE (resource)
+    first_seen TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    last_seen TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    CONSTRAINT resources_constraint UNIQUE (resource, module, source)
 );
 
 CREATE TABLE IF NOT EXISTS observations (
@@ -14,9 +14,9 @@ CREATE TABLE IF NOT EXISTS observations (
     module TEXT NOT NULL,
     attribute TEXT NOT NULL,
     value TEXT NOT NULL,
-    first_seen TIMESTAMP DEFAULT NOW(),
-    last_changed TIMESTAMP DEFAULT NOW(),
-    last_seen TIMESTAMP DEFAULT NOW(),
+    first_seen TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    last_changed TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    last_seen TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
     CONSTRAINT observations_constraint UNIQUE (module, attribute, resource)
 );
 
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS history (
     module TEXT NOT NULL,
     attribute TEXT NOT NULL,
     value TEXT NOT NULL,
-    timestamp TIMESTAMP DEFAULT NOW(),
+    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
     CONSTRAINT history_constraint UNIQUE (module, attribute, resource, timestamp)
 );
 
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS changes (
     attribute TEXT NOT NULL,
     old_value TEXT NOT NULL,
     new_value TEXT NOT NULL,
-    timestamp TIMESTAMP DEFAULT NOW(),
+    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
     CONSTRAINT changes_constraint UNIQUE (module, attribute, resource, timestamp, old_value, new_value)
 );
 

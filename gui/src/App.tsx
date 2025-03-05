@@ -19,7 +19,7 @@ function App() {
                 fields={[
                   "id",
                   "resource",
-                  "modules",
+                  "module",
                   "source",
                   "first_seen",
                   "last_seen",

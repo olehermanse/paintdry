@@ -182,8 +182,8 @@ class Updater:
             if name not in config["modules"]:
                 print(f"Warning: Module '{name}' missing")
                 return None
-            module = config['modules'][name]
-            command = module['command']
+            module = config["modules"][name]
+            command = module["command"]
             slow = module.get("slow", False)
             self.modules[name] = Module(name, command, slow)
         return self.modules[name]
@@ -239,20 +239,10 @@ class Updater:
         if key in self.cache:
             return ([], [])
         self.cache[key] = True
-        resource = Resource(identifier, [module])
-        for module in resource.modules:
-            match module:
-                case "http":
-                    return self.send_request_for_resource(resource, module)
-                case "dns":
-                    return self.send_request_for_resource(resource, module)
-                case "github":
-                    return self.send_request_for_resource(resource, module)
-                case "example":
-                    return self.send_request_for_resource(resource, module)
-                case other:
-                    sys.exit(f"Target '{module}' not supported!")
-        return
+        resource = Resource(identifier, module)
+        if not self.get_module(module):
+            sys.exit(f"Target '{module}' not supported!")
+        return self.send_request_for_resource(resource, module)
 
     def process_discovery(self, module: str, discovery: Discovery):
         if discovery.module != module:
@@ -264,9 +254,7 @@ class Updater:
         )
 
     def initiate_requests(self, entry: Resource):
-        resource = entry.resource
-        for module in entry.modules:
-            self._process(resource, module)
+        self._process(entry.resource, entry.module)
 
     def process_config_target(self, target: ConfigTarget):
         resource = Resource.from_target(target)

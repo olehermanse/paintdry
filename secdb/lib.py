@@ -229,7 +229,7 @@ class Resource(dict):
     def __init__(
         self,
         resource: str,
-        modules: list[str],
+        module: str,
         id=None,
         source=None,
         first_seen=None,
@@ -238,7 +238,7 @@ class Resource(dict):
         dict.__init__(
             self,
             resource=resource,
-            modules=modules,
+            module=module,
             id=id,
             source=source,
             first_seen=first_seen,
@@ -250,8 +250,8 @@ class Resource(dict):
         return self["resource"]
 
     @property
-    def modules(self):
-        return self["modules"]
+    def module(self):
+        return self["module"]
 
     def __setattr__(self, name: str, value: Any, /) -> None:
         if name not in self:
@@ -263,11 +263,11 @@ class Resource(dict):
 
     @staticmethod
     def from_target(target: ConfigTarget):
-        return Resource(target.resource, [target.module])
+        return Resource(target.resource, target.module)
 
     @staticmethod
     def from_discovery(discovery: Discovery):
-        return Resource(discovery.resource, [discovery.module], source=discovery.source)
+        return Resource(discovery.resource, discovery.module, source=discovery.source)
 
 
 class Response:

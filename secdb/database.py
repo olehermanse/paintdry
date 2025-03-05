@@ -46,12 +46,12 @@ class Database:
     def upsert_resource(self, resource: Resource, source):
         return self._query(
             """
-            INSERT INTO resources (modules, resource, source)
+            INSERT INTO resources (module, resource, source)
             VALUES(%s, %s, %s)
             ON CONFLICT ON CONSTRAINT resources_constraint
             DO UPDATE SET last_seen = NOW()
             """,
-            (resource.modules, resource.resource, source),
+            (resource.module, resource.resource, source),
         )
 
     def upsert_observations(self, observation: Observation):
@@ -87,7 +87,7 @@ class Database:
     def get_resource(self, id: int) -> Resource | None:
         rows = self._query(
             """
-            SELECT id, resource, modules, source, first_seen, last_seen
+            SELECT id, resource, module, source, first_seen, last_seen
             FROM resources
             WHERE id=%s;
             """,
@@ -100,7 +100,7 @@ class Database:
             resource = Resource(
                 id=row[0],
                 resource=row[1],
-                modules=row[2],
+                module=row[2],
                 source=row[3],
                 first_seen=row[4],
                 last_seen=row[5],
@@ -113,7 +113,7 @@ class Database:
     def get_resources(self) -> list[Resource]:
         rows = self._query(
             """
-            SELECT id, resource, modules, source, first_seen, last_seen
+            SELECT id, resource, module, source, first_seen, last_seen
             FROM resources;
             """
         )
@@ -124,7 +124,7 @@ class Database:
             resource = Resource(
                 id=row[0],
                 resource=row[1],
-                modules=row[2],
+                module=row[2],
                 source=row[3],
                 first_seen=row[4],
                 last_seen=row[5],
