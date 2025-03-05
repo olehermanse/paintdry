@@ -43,6 +43,7 @@ class ModExample(ModBase):
                 "attribute": "now",
                 "value": now(),
                 "timestamp": now(),
+                "severity": "none",
             }
         ]
 

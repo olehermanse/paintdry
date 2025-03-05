@@ -29,21 +29,6 @@ class ModDNS(ModBase):
             },
         ]
 
-    def observation(self, request: dict) -> list[dict]:
-        assert request["module"] == "dns"
-
-        resource = normalize_hostname(request["resource"])
-        timestamp, ips = dns_lookup(resource)
-        response = {
-            "operation": request["operation"],
-            "resource": normalize_hostname(resource),
-            "module": "dns",
-            "attribute": "ip",
-            "value": ", ".join(ips),
-            "timestamp": timestamp,
-        }
-        return [response]
-
     def discovery(self, request: dict) -> list[dict]:
         resource = normalize_hostname(request["resource"])
         timestamp, ips = dns_lookup(resource)
@@ -58,6 +43,22 @@ class ModDNS(ModBase):
                 "timestamp": request["timestamp"],
             }
         ]
+
+    def observation(self, request: dict) -> list[dict]:
+        assert request["module"] == "dns"
+
+        resource = normalize_hostname(request["resource"])
+        timestamp, ips = dns_lookup(resource)
+        response = {
+            "operation": request["operation"],
+            "resource": normalize_hostname(resource),
+            "module": "dns",
+            "attribute": "ip",
+            "value": ", ".join(ips),
+            "timestamp": timestamp,
+            "severity": "none",
+        }
+        return [response]
 
 
 def main():

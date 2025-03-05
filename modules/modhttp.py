@@ -97,8 +97,11 @@ class ModHTTP(ModBase):
         url = normalize_url(request["resource"])
         r = http_get(url)
         status_code = r.status_code
-        # if randint(0,100) < 10:
-        #     status_code = 404
+        severity = "none"
+        if status_code >= 500:
+            severity = "high"
+        if status_code < 200 or status_code >= 400:
+            severity = "low"
         observations = []
         observations.append(
             {
@@ -108,6 +111,7 @@ class ModHTTP(ModBase):
                 "attribute": "status_code",
                 "value": status_code,
                 "timestamp": r.timestamp,
+                "severity": severity,
             }
         )
         for key, value in r.notable_headers.items():
@@ -119,6 +123,7 @@ class ModHTTP(ModBase):
                     "attribute": key,
                     "value": value,
                     "timestamp": r.timestamp,
+                    "severity": "none",
                 }
             )
         return observations

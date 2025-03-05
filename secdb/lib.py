@@ -179,6 +179,7 @@ class Observation(dict):
         last_changed=None,
         last_seen=None,
         timestamp=None,
+        severity=str,
     ):
         if type(timestamp) is int:
             timestamp = datetime.datetime.fromtimestamp(timestamp)
@@ -195,6 +196,7 @@ class Observation(dict):
             last_changed=last_changed,
             last_seen=last_seen,
             timestamp=timestamp,
+            severity=severity,
         )
 
     @property
@@ -216,6 +218,10 @@ class Observation(dict):
     @property
     def timestamp(self):
         return self["timestamp"]
+
+    @property
+    def severity(self):
+        return self["severity"]
 
     def __setattr__(self, name: str, value: Any, /) -> None:
         if name not in self:

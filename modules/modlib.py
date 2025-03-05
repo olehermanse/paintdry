@@ -60,6 +60,11 @@ class ModBase:
     def observation(self, request: dict) -> list[dict]:
         return []
 
+    def change(self, request: dict) -> list[dict]:
+        assert request["old_value"] != request["new_value"]
+        request["severity"] = "none"
+        return [request]
+
     def handle_request(self, request: dict) -> list[dict]:
         assert type(request.get("operation", None)) is str
         assert type(request.get("resource", None)) is str
@@ -68,6 +73,8 @@ class ModBase:
             return self.discovery(request)
         if request["operation"] == "observation":
             return self.observation(request)
+        if request["operation"] == "change":
+            return self.change(request)
         return []
 
     def handle_line(self, line):

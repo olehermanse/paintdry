@@ -95,6 +95,7 @@ class ModGitHub(ModBase):
                 "attribute": "url",
                 "value": f"https://github.com/{org}",
                 "timestamp": now(),
+                "severity": "none",
             }
         ]
 
@@ -129,6 +130,7 @@ class ModGitHub(ModBase):
                     "attribute": name,
                     "value": data[key],
                     "timestamp": timestamp,
+                    "severity": "none",
                 }
             )
         if "license" in data and data["license"]:
@@ -140,6 +142,7 @@ class ModGitHub(ModBase):
                     "attribute": "license",
                     "value": data["license"]["name"],
                     "timestamp": timestamp,
+                    "severity": "none",
                 }
             )
         return observations
@@ -149,6 +152,19 @@ class ModGitHub(ModBase):
         if not "/" in resource:
             return self.observation_org(request)
         return self.observation_repo(request)
+
+    def change(self, request: dict) -> list[dict]:
+        # resource
+        # module
+        # attribute
+        # old_value
+        # new_value
+        # timestamp
+        assert request["old_value"] != request["new_value"]
+        request["severity"] = "none"
+        if request["attribute"] == "visibility":
+            request["severity"] = "high"
+        return [request]
 
 
 if __name__ == "__main__":

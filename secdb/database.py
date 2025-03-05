@@ -60,13 +60,15 @@ class Database:
         resource = observation.resource
         value = observation.value
         timestamp = observation.timestamp
+        severity = observation.severity
         return self._query(
             """
-            INSERT INTO observations (module, attribute, resource, value, first_seen, last_changed, last_seen)
-            VALUES(%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO observations (module, attribute, resource, value, first_seen, last_changed, last_seen, severity)
+            VALUES(%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT ON CONSTRAINT observations_constraint
             DO UPDATE SET last_seen = %s,
             value = EXCLUDED.value,
+            severity = EXCLUDED.severity,
             last_changed = CASE
             WHEN observations.value IS DISTINCT FROM EXCLUDED.value THEN %s
             ELSE observations.last_changed END;
@@ -79,6 +81,7 @@ class Database:
                 timestamp,
                 timestamp,
                 timestamp,
+                severity,
                 timestamp,
                 timestamp,
             ),
@@ -175,6 +178,7 @@ class Database:
                 "first_seen",
                 "last_changed",
                 "last_seen",
+                "severity",
             ],
         )
         if not objects:
@@ -188,7 +192,7 @@ class Database:
     def get_observation(self, id: int) -> Observation | None:
         rows = self._query(
             """
-            SELECT id, resource, module, attribute, value, first_seen, last_changed, last_seen
+            SELECT id, resource, module, attribute, value, first_seen, last_changed, last_seen, severity
             FROM observations
             WHERE id=%s;
             """,
@@ -207,6 +211,7 @@ class Database:
                 first_seen=row[5],
                 last_changed=row[6],
                 last_seen=row[7],
+                severity=row[8],
             )
             results.append(observation)
         if len(results) == 1:

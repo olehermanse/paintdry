@@ -17,8 +17,11 @@ CREATE TABLE IF NOT EXISTS observations (
     first_seen TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
     last_changed TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
     last_seen TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    severity TEXT NOT NULL DEFAULT '',
     CONSTRAINT observations_constraint UNIQUE (module, attribute, resource)
 );
+
+ALTER TABLE observations ADD COLUMN IF NOT EXISTS severity TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS history (
     id serial PRIMARY KEY,
@@ -38,8 +41,11 @@ CREATE TABLE IF NOT EXISTS changes (
     old_value TEXT NOT NULL,
     new_value TEXT NOT NULL,
     timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    severity TEXT NOT NULL DEFAULT '',
     CONSTRAINT changes_constraint UNIQUE (module, attribute, resource, timestamp, old_value, new_value)
 );
+
+ALTER TABLE changes ADD COLUMN IF NOT EXISTS severity TEXT NOT NULL DEFAULT '';
 
 CREATE OR REPLACE FUNCTION observations_to_history_function()
 RETURNS TRIGGER AS $observations_to_history_function$
