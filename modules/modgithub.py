@@ -1,10 +1,12 @@
+import datetime
 from pathlib import Path
 from functools import cache
 from modlib import ModBase, strip_prefix, now
-
+import os
+import json
 
 @cache
-def normalize_org(url: str) -> str:
+def normalize_resource(url: str) -> str:
     while url.endswith("/"):
         url = url[0:-1]
     url = strip_prefix("http://", url)
@@ -32,19 +34,56 @@ class ModGitHub(ModBase):
             },
         ]
 
-    def discovery(self, request: dict) -> list[dict]:
-        return [
+    def discover_repos(self, request):
+        org = normalize_resource(request["resource"])
+        assert "/" not in org
+        folder = f"mount-state/repos/github.com/{org}"
+        if not os.path.exists(folder):
+            return []
+        discoveries = [
             {
                 "operation": "discovery",
-                "resource": normalize_org(request["resource"]),
+                "resource": normalize_resource(request["resource"]),
                 "module": "github",
                 "source": request["source"],
                 "timestamp": request["timestamp"],
             }
         ]
 
-    def observation(self, request: dict) -> list[dict]:
-        org = normalize_org(request["resource"])
+        for entry in os.scandir(folder):
+            if not entry.is_dir():
+                continue
+            resource = org + "/" + entry.name
+            if not os.path.exists(entry.path + "/metadata.json"):
+                continue
+            discoveries.append(
+            {
+                "operation": "discovery",
+                "resource": resource,
+                "module": "github",
+                "source": request["resource"],
+                "timestamp": request["timestamp"],
+            })
+
+        return discoveries
+
+    def discovery(self, request: dict) -> list[dict]:
+        resource = normalize_resource(request["resource"])
+        if not "/" in resource:
+            return self.discover_repos(request)
+        return [{
+            "operation": "discovery",
+            "resource": resource,
+            "module": "github",
+            "source": request["source"],
+            "timestamp": request["timestamp"],
+        }]
+
+    def observation_org(self, request: dict) -> list[dict]:
+        org = normalize_resource(request["resource"])
+        folder = f"mount-state/repos/github.com/{org}"
+        if not os.path.exists(folder):
+            return []
         return [
             {
                 "operation": request["operation"],
@@ -55,6 +94,54 @@ class ModGitHub(ModBase):
                 "timestamp": now(),
             }
         ]
+
+    def observation_repo(self, request: dict) -> list[dict]:
+        repo = normalize_resource(request["resource"])
+        folder = f"mount-state/repos/github.com/{repo}"
+        if not os.path.exists(folder):
+            return []
+        with open(folder + "/updated", "r") as f:
+            ts = datetime.datetime.fromisoformat(f.read().strip())
+            timestamp = int(ts.timestamp())
+        with open(folder + "/metadata.json", "r") as f:
+            data = json.loads(f.read())
+
+        observations = []
+        keys = {
+            "html_url": "url",
+            "description": "description",
+            "default_branch": "default_branch",
+            "visibility": "visibility",
+            "archived": "archived",
+            "homepage": "homepage",
+        }
+        for key, name in keys.items():
+            if key not in data:
+                continue
+            observations.append({
+                "operation": request["operation"],
+                "resource": repo,
+                "module": "github",
+                "attribute": name,
+                "value": data[key],
+                "timestamp": timestamp,
+            })
+        if "license" in data and data["license"]:
+            observations.append({
+            "operation": request["operation"],
+            "resource": repo,
+            "module": "github",
+            "attribute": "license",
+            "value": data["license"]["name"],
+            "timestamp": timestamp,
+        })
+        return observations
+
+    def observation(self, request: dict) -> list[dict]:
+        resource = normalize_resource(request["resource"])
+        if not "/" in resource:
+            return self.observation_org(request)
+        return self.observation_repo(request)
 
 
 if __name__ == "__main__":
