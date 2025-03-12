@@ -67,3 +67,18 @@ http://127.0.0.1:8000/ui
 Or the pgweb UI:
 
 http://127.0.0.1:9000
+
+## Severity
+
+The observations and changes receive a severity level to highlight / rank suspicious values.
+Here is a guideline for which level to use:
+
+- `critical` - Urgent issue which is definitely bad and needs immediate attention.
+- `high` - Severe issue with real impact and little to no doubt that it's a real issue.
+- `medium` - Something which could be bad, but the impact or certainty is limited.
+- `low` - Security issues which are not generally exploitable, but could be under certain circumstances.
+- `recommendation` - Recommendations which should be fixed, but not directly exploitable.
+- `notice` - Notice about a value or change which is noteworthy / doesn't happen often, but needs to be reviewed by a human to understand the impact.
+- `unknown` - The module has tried to assess the severity, but it is unknown - likely the module needs to be updated.
+- `none` - The value / change is determined to not be an issue at all and should be hidden from views highlighting issues / improvements.
+- _Empty string_ - The severity has not been assessed at all, not sent to module yet or no response received back.
