@@ -7,8 +7,11 @@ from modlib import ModBase, now, normalize_hostname
 @cache
 def dns_lookup(hostname: str) -> tuple[int, list[str]]:
     time.sleep(1)
-    results = socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)
-    return (now(), sorted([x[4][0] for x in results]))
+    try:
+        results = socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)
+        return (now(), sorted([x[4][0] for x in results]))
+    except:
+        return (now(), [])
 
 
 class ModDNS(ModBase):
