@@ -59,9 +59,15 @@ class ModDNS(ModBase):
             "attribute": "ip",
             "value": ", ".join(ips),
             "timestamp": timestamp,
-            "severity": "none",
+            "severity": "none" if len(ips) > 0 else "high",
         }
         return [response]
+
+    def change(self, request):
+        response = super().change(request)
+        if request["new_value"] == "":
+            response["severity"] = "high"
+        return response
 
 
 def main():

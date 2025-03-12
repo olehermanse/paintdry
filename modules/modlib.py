@@ -62,7 +62,7 @@ class ModBase:
 
     def change(self, request: dict) -> list[dict]:
         assert request["old_value"] != request["new_value"]
-        request["severity"] = "none"
+        request["severity"] = "unknown"
         return [request]
 
     def handle_request(self, request: dict) -> list[dict]:

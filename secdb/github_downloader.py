@@ -6,14 +6,12 @@ import requests_cache
 from datetime import timedelta, datetime
 from time import sleep
 
-requests_cache.install_cache("api_cache", expire_after=timedelta(hours=2))
 token = None
 
 
 def github_get(url):
     global token
     print("GET: " + url)
-    sleep(1)
     r = requests.get(
         url,
         headers={
@@ -21,7 +19,11 @@ def github_get(url):
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
+    if not r.from_cache:
+        sleep(1)
     if r.status_code != 200:
+        print(str(r.text))
+        print(str(r.status_code))
         sleep(3)
     assert r.status_code == 200
     result = r.json()
@@ -40,7 +42,24 @@ def github_repo_info(repos, organizations):
             if not data:
                 break
             for repo in data:
-                repos["github.com"][org][repo["name"]] = repo
+                name = repo["name"]
+                if repo["visibility"] == "public" and not repo["archived"]:
+                    rulesets = github_get(
+                        f"https://api.github.com/repos/{org}/{name}/rulesets?per_page=100&page=1"
+                    )
+                    repo["rulesets"] = rulesets
+                repos["github.com"][org][name] = repo
+
+
+def record_org_metadata(path, org, repos):
+    data = {"repos": []}
+    for name, repo in repos.items():
+        print(str(repo))
+        data["repos"].append(name)
+    data["repos"] = sorted(data["repos"])
+    with open(path + "/org-metadata.json", "w") as f:
+        f.write(json.dumps(data, indent=2))
+        f.write("\n")
 
 
 def mkdir(path):
@@ -71,6 +90,9 @@ def main():
         sys.exit(1)
 
     secrets_json = sys.argv[1]
+    root = sys.argv[2]
+
+    requests_cache.install_cache(f"{root}/api_cache", expire_after=timedelta(hours=2))
 
     st = os.stat(secrets_json)
     oct_perm = str(oct(st.st_mode))[-3:]
@@ -88,7 +110,6 @@ def main():
     global token
     token = secrets["github_access_token"]
     organizations = secrets["github_organizations"]
-    root = sys.argv[2]
     data = {}
     github_repo_info(data, organizations)
     mkdir(f"{root}")
@@ -99,12 +120,15 @@ def main():
         for org, repos in organizations.items():
             path = os.path.join(root, website, org)
             mkdir(path)
+            record_org_metadata(path, org, repos)
             for reponame, repo in repos.items():
-                if repo.get("archived") == True or reponame == "qemu":
+                if repo.get("archived") == True:
                     print("Skipping archived repo - " + reponame)
                     path = os.path.join(root, website, org, reponame)
                     mkdir(path)
-                    cmd("rm -rf " + path)
+                    cmd(f"rm -rf '{path}'")
+                    mkdir(path)
+                    cmd(f"touch '{path}/archived'")
                     continue
 
                 ts_path = os.path.join(root, website, org, reponame, "updated")
