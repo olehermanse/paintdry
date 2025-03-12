@@ -1,3 +1,32 @@
+CREATE OR REPLACE FUNCTION json_to_string(json_column TEXT) RETURNS TEXT AS $$
+DECLARE
+    formatted_text TEXT;
+BEGIN
+    -- Try to convert and check JSON type
+    IF json_column='[]' THEN
+        formatted_text := '(Empty list)';
+    ELSIF json_column='""' THEN
+        formatted_text := '(Empty string)';
+    ELSIF json_column='' THEN
+        formatted_text := '(Empty string)';
+    ELSIF json_column='{}' THEN
+        formatted_text := '(Empty object)';
+    ELSIF jsonb_typeof(json_column::JSONB) = 'array' THEN
+        SELECT string_agg(element, ', ')
+        INTO formatted_text
+        FROM jsonb_array_elements_text(json_column::JSONB) AS element;
+    ELSE
+        -- Not an array, just return the text form of the JSON
+        formatted_text := json_column::TEXT;
+    END IF;
+    RETURN formatted_text;
+EXCEPTION
+    WHEN invalid_text_representation THEN
+        -- Not valid JSON - just return the raw text
+        RETURN json_column::TEXT;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 CREATE TABLE IF NOT EXISTS resources (
     id serial PRIMARY KEY,
     resource TEXT NOT NULL,
@@ -22,6 +51,10 @@ CREATE TABLE IF NOT EXISTS observations (
 );
 
 ALTER TABLE observations ADD COLUMN IF NOT EXISTS severity TEXT NOT NULL DEFAULT '';
+
+CREATE OR REPLACE VIEW pretty_observations AS
+SELECT module, resource, attribute, json_to_string(value) AS value, first_seen, last_changed, last_seen
+FROM observations;
 
 CREATE TABLE IF NOT EXISTS history (
     id serial PRIMARY KEY,
