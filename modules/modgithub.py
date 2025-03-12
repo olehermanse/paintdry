@@ -128,7 +128,7 @@ class ModGitHub(ModBase):
                     "resource": repo,
                     "module": "github",
                     "attribute": name,
-                    "value": data[key],
+                    "value": data.get(key, ""),
                     "timestamp": timestamp,
                     "severity": "none",
                 }
