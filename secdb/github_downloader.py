@@ -54,7 +54,6 @@ def github_repo_info(repos, organizations):
 def record_org_metadata(path, org, repos):
     data = {"repos": []}
     for name, repo in repos.items():
-        print(str(repo))
         data["repos"].append(name)
     data["repos"] = sorted(data["repos"])
     with open(path + "/org-metadata.json", "w") as f:

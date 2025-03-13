@@ -50,9 +50,8 @@ CREATE TABLE IF NOT EXISTS observations (
     CONSTRAINT observations_constraint UNIQUE (module, attribute, resource)
 );
 
-ALTER TABLE observations ADD COLUMN IF NOT EXISTS severity TEXT NOT NULL DEFAULT '';
-
-CREATE OR REPLACE VIEW pretty_observations AS
+DROP VIEW IF EXISTS pretty_observations;
+CREATE VIEW pretty_observations AS
 SELECT module, resource, attribute, json_to_string(value) AS value, severity, first_seen, last_changed, last_seen
 FROM observations;
 
@@ -66,7 +65,8 @@ CREATE TABLE IF NOT EXISTS history (
     CONSTRAINT history_constraint UNIQUE (module, attribute, resource, timestamp)
 );
 
-CREATE OR REPLACE VIEW pretty_history AS
+DROP VIEW IF EXISTS pretty_history;
+CREATE VIEW pretty_history AS
 SELECT module, resource, attribute, json_to_string(value) AS value, timestamp
 FROM history;
 
@@ -82,9 +82,8 @@ CREATE TABLE IF NOT EXISTS changes (
     CONSTRAINT changes_constraint UNIQUE (module, attribute, resource, timestamp, old_value, new_value)
 );
 
-ALTER TABLE changes ADD COLUMN IF NOT EXISTS severity TEXT NOT NULL DEFAULT '';
-
-CREATE OR REPLACE VIEW pretty_changes AS
+DROP VIEW IF EXISTS pretty_changes;
+CREATE VIEW pretty_changes AS
 SELECT module, resource, attribute, json_to_string(old_value) AS old_value, json_to_string(new_value) AS new_value, severity, timestamp
 FROM changes;
 

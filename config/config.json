@@ -1,8 +1,23 @@
 {
   "targets": [
     {
-      "modules": ["http", "dns"],
-      "resources": ["https://cfengine.com", "https://mender.io", "https://alvaldi.com", "https://northern.tech"]
+      "modules": ["http", "dns", "tls"],
+      "resources": [
+        "https://northern.tech",
+        "https://devicechronicle.com",
+        "https://cfengine.com",
+        "https://build.cfengine.com",
+        "https://docs.cfengine.com",
+        "https://ci.cfengine.com",
+        "https://mender.io",
+        "https://docs.mender.io",
+        "https://hosted.mender.io",
+        "https://staging.hosted.mender.io",
+        "https://alvaldi.com",
+        "https://app.alvaldi.com",
+        "https://staging.app.alvaldi.com",
+        "https://docs.alvaldi.com"
+      ]
     },
     {
       "modules": ["github"],
@@ -15,6 +30,9 @@
     },
     "http": {
       "command": "python3 /secdb/modules/modhttp.py"
+    },
+    "tls": {
+      "command": "python3 /secdb/modules/modtls.py"
     },
     "github": {
       "command": "python3 /secdb/modules/modgithub.py",

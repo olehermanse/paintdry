@@ -8,14 +8,14 @@ sleep 10
 psql -f schema.sql
 
 while true; do
-  echo "SELECT * FROM resources;"
-  psql -c "SELECT * FROM resources;"
-  echo "SELECT * FROM observations;"
-  psql -c "SELECT * FROM observations;"
-  echo "SELECT * FROM history;"
-  psql -c "SELECT * FROM history;"
-  echo "SELECT * FROM changes;"
-  psql -c "SELECT * FROM changes;"
+  echo "SELECT * FROM resources LIMIT 5;"
+  psql -c "SELECT * FROM resources LIMIT 5;"
+  echo "SELECT * FROM observations LIMIT 5;"
+  psql -c "SELECT * FROM observations LIMIT 5;"
+  echo "SELECT * FROM history LIMIT 5;"
+  psql -c "SELECT * FROM history LIMIT 5;"
+  echo "SELECT * FROM changes LIMIT 5;"
+  psql -c "SELECT * FROM changes LIMIT 5;"
   python3 -m secdb update-once
   sleep 10
 done

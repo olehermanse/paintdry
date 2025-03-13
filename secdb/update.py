@@ -143,8 +143,8 @@ class Module:
         # TODO check if process already exited so we can start another
         if self._process:
             return
-        if len(self._request_backlog) == 0:
-            return
+        # if len(self._request_backlog) == 0:
+        #     return
         self._dump_backlog()
         self._start_process()
 
@@ -195,6 +195,7 @@ class Updater:
         return self.modules[name]
 
     def process_discovery_backlog(self):
+        print("Processing discovery backlog")
         modules = {}
         for discovery in self.discovery_backlog:
             request = ModuleRequest(
@@ -254,9 +255,12 @@ class Updater:
 
     def process_discovery(self, module: str, discovery: Discovery):
         if discovery.module != module:
+            print(
+                f"Discovery: {discovery.resource} for {discovery.module} suggested by {module}"
+            )
             self.discovery_backlog.append(discovery)
             return
-        print("Discovery: " + discovery.resource)
+        print(f"Discovery: {discovery.resource} accepted by {module}")
         self.database.upsert_resource(
             Resource.from_discovery(discovery), discovery.source
         )
@@ -337,6 +341,10 @@ class Updater:
 
         # Send requests based on resources table:
         self.setup_requests()
+        for module in config["modules"]:
+            module = self.get_module(module)
+            assert module is not None
+            module.start()
         self.process_responses()
 
         # Commit snapshot

@@ -1,6 +1,12 @@
-import requests
+import ssl
 from time import sleep
 from functools import cache
+from datetime import datetime, timezone
+
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+import requests
+
 from modlib import ModBase, now, normalize_url, url_to_hostname
 
 
@@ -60,7 +66,6 @@ class ModHTTP(ModBase):
 
     def discovery(self, request: dict) -> list[dict]:
         url = normalize_url(request["resource"])
-        r = http_get(url)
 
         discoveries = []
         discoveries.append(
@@ -82,11 +87,21 @@ class ModHTTP(ModBase):
                     "timestamp": request["timestamp"],
                 }
             )
+        hostname = url_to_hostname(url)
         discoveries.append(
             {
                 "operation": "discovery",
-                "resource": url_to_hostname(url),
+                "resource": hostname,
                 "module": "dns",
+                "source": "http",
+                "timestamp": request["timestamp"],
+            }
+        )
+        discoveries.append(
+            {
+                "operation": "discovery",
+                "resource": "https://" + hostname,
+                "module": "tls",
                 "source": "http",
                 "timestamp": request["timestamp"],
             }
@@ -95,7 +110,10 @@ class ModHTTP(ModBase):
 
     def observation(self, request: dict) -> list[dict]:
         url = normalize_url(request["resource"])
+        observations = []
+
         r = http_get(url)
+
         status_code = r.status_code
         severity = ""
         if status_code == 200:
@@ -108,7 +126,6 @@ class ModHTTP(ModBase):
             severity = "medium"
         else:
             status_code = "low"
-        observations = []
         observations.append(
             {
                 "operation": request["operation"],
