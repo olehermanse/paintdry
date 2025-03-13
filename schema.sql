@@ -2,7 +2,7 @@ CREATE OR REPLACE FUNCTION json_to_string(json_column TEXT) RETURNS TEXT AS $$
 DECLARE
     formatted_text TEXT;
 BEGIN
-    -- Try to convert and check JSON type
+    -- Try to recognize the data based on hardcoded edge cases, or JSON type:
     IF json_column='[]' THEN
         formatted_text := '(Empty list)';
     ELSIF json_column='""' THEN
@@ -16,7 +16,7 @@ BEGIN
         INTO formatted_text
         FROM jsonb_array_elements_text(json_column::JSONB) AS element;
     ELSE
-        -- Not an array, just return the text form of the JSON
+        -- Not recognized / handled, just default to original
         formatted_text := json_column::TEXT;
     END IF;
     RETURN formatted_text;
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS observations (
 ALTER TABLE observations ADD COLUMN IF NOT EXISTS severity TEXT NOT NULL DEFAULT '';
 
 CREATE OR REPLACE VIEW pretty_observations AS
-SELECT module, resource, attribute, json_to_string(value) AS value, first_seen, last_changed, last_seen
+SELECT module, resource, attribute, json_to_string(value) AS value, severity, first_seen, last_changed, last_seen
 FROM observations;
 
 CREATE TABLE IF NOT EXISTS history (
@@ -65,6 +65,10 @@ CREATE TABLE IF NOT EXISTS history (
     timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
     CONSTRAINT history_constraint UNIQUE (module, attribute, resource, timestamp)
 );
+
+CREATE OR REPLACE VIEW pretty_history AS
+SELECT module, resource, attribute, json_to_string(value) AS value, timestamp
+FROM history;
 
 CREATE TABLE IF NOT EXISTS changes (
     id serial PRIMARY KEY,
@@ -79,6 +83,10 @@ CREATE TABLE IF NOT EXISTS changes (
 );
 
 ALTER TABLE changes ADD COLUMN IF NOT EXISTS severity TEXT NOT NULL DEFAULT '';
+
+CREATE OR REPLACE VIEW pretty_changes AS
+SELECT module, resource, attribute, json_to_string(old_value) AS old_value, json_to_string(new_value) AS new_value, severity, timestamp
+FROM changes;
 
 CREATE OR REPLACE FUNCTION observations_to_history_function()
 RETURNS TRIGGER AS $observations_to_history_function$
