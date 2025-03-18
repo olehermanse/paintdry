@@ -17,5 +17,5 @@ while true; do
   echo "SELECT * FROM changes LIMIT 5;"
   psql -c "SELECT * FROM changes LIMIT 5;"
   python3 -m secdb update-once
-  sleep 10
+  sleep 60
 done

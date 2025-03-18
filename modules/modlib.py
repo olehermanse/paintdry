@@ -5,6 +5,8 @@ import json
 import fileinput
 import datetime
 from urllib.parse import urlparse
+import requests_cache
+from datetime import timedelta
 
 
 def now() -> int:
@@ -27,7 +29,7 @@ def url_to_hostname(url: str) -> str:
         url = url[len("https://") :]
     elif url.startswith("http://"):
         url = url[len("http://") :]
-    index = url.rfind("/")
+    index = url.find("/")
     if index >= 0:
         return url[0:index]
     return url
@@ -51,6 +53,9 @@ def normalize_url(url: str) -> str:
 
 
 class ModBase:
+    def __init__(self):
+        self.cache_folder = None
+
     def example_requests(self):
         return []
 
@@ -141,11 +146,24 @@ class ModBase:
             print()
         return
 
-    def main(self):
+    def get_cache_path(self):
+        if not self.cache_folder:
+            return None
+        return self.cache_folder + "http_cache"
+
+    def install_cache(self):
+        requests_cache.install_cache(
+            self.get_cache_path(), expire_after=timedelta(hours=2)
+        )
+
+    def main(self, cache=True):
         if len(sys.argv) == 2 and sys.argv[1] == "example":
             self.run_example()
             return
-        if len(sys.argv) == 3:
+        if len(sys.argv) == 4:
+            self.cache_folder = sys.argv[3]
+            if cache:
+                self.install_cache()
             self.handle_files(sys.argv[1], sys.argv[2])
             return
         self.handle_stdin_stdout()

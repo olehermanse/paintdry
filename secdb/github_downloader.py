@@ -19,12 +19,14 @@ def github_get(url):
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
+    if r.from_cache:
+        print("CACHE HIT: " + url)
     if not r.from_cache:
-        sleep(1)
-    if r.status_code != 200:
-        print(str(r.text))
-        print(str(r.status_code))
-        sleep(3)
+        sleep(0.2)
+        if r.status_code != 200:
+            print(str(r.text))
+            print(str(r.status_code))
+            sleep(0.8)
     assert r.status_code == 200
     result = r.json()
     # print(result)
@@ -84,14 +86,19 @@ def env_var(key):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: github_downloader.py <secrets.json> <target_folder>")
+    if len(sys.argv) != 4:
+        print(
+            "Usage: github_downloader.py <secrets.json> <target_folder> <cache_folder>"
+        )
         sys.exit(1)
 
     secrets_json = sys.argv[1]
     root = sys.argv[2]
+    cache_folder = sys.argv[3]
 
-    requests_cache.install_cache(f"{root}/api_cache", expire_after=timedelta(hours=2))
+    requests_cache.install_cache(
+        cache_folder + "http_cache", expire_after=timedelta(hours=2)
+    )
 
     st = os.stat(secrets_json)
     oct_perm = str(oct(st.st_mode))[-3:]
@@ -122,12 +129,18 @@ def main():
             record_org_metadata(path, org, repos)
             for reponame, repo in repos.items():
                 if repo.get("archived") == True:
-                    print("Skipping archived repo - " + reponame)
+                    # print("Skipping archived repo - " + reponame)
                     path = os.path.join(root, website, org, reponame)
-                    mkdir(path)
-                    cmd(f"rm -rf '{path}'")
-                    mkdir(path)
-                    cmd(f"touch '{path}/archived'")
+                    if not os.path.exists(path):
+                        mkdir(path)
+                    if os.path.exists(f"{path}/branches"):
+                        cmd(f"rm -rf '{path}/branches'")
+                    if os.path.exists(f"{path}/metadata.json"):
+                        cmd(f"rm -rf '{path}/metadata.json'")
+                    if os.path.exists(f"{path}/update"):
+                        cmd(f"rm -rf '{path}/update'")
+                    if not os.path.exists(f"{path}/archived"):
+                        cmd(f"touch '{path}/archived'")
                     continue
 
                 ts_path = os.path.join(root, website, org, reponame, "updated")
@@ -138,7 +151,7 @@ def main():
                         now = datetime.now()
                         delta = now - updated
                         if delta < timedelta(hours=2):
-                            print("Skipping up-to-date repo " + reponame)
+                            # print("Skipping up-to-date repo " + reponame)
                             continue
 
                 path = os.path.join(root, website, org, reponame)
@@ -159,8 +172,10 @@ def main():
                 pull_cmd = f"sh -c 'cd {default_branch_path} && git pull'"
                 if not os.path.exists(default_branch_path):
                     cmd(clone_cmd)
+                    sleep(2)
                 else:
                     cmd(pull_cmd)
+                    sleep(1)
 
                 now = datetime.now()
                 with open(ts_path, "w") as f:

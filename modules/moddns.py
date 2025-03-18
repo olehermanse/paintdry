@@ -52,16 +52,19 @@ class ModDNS(ModBase):
 
         resource = normalize_hostname(request["resource"])
         timestamp, ips = dns_lookup(resource)
-        response = {
-            "operation": request["operation"],
-            "resource": normalize_hostname(resource),
-            "module": "dns",
-            "attribute": "ip",
-            "value": ", ".join(ips),
-            "timestamp": timestamp,
-            "severity": "none" if len(ips) > 0 else "high",
-        }
-        return [response]
+        if not ips:
+            return []
+        return [
+            {
+                "operation": request["operation"],
+                "resource": normalize_hostname(resource),
+                "module": "dns",
+                "attribute": "ip",
+                "value": ", ".join(ips),
+                "timestamp": timestamp,
+                "severity": "none" if len(ips) > 0 else "high",
+            }
+        ]
 
     def change(self, request):
         response = super().change(request)

@@ -1,10 +1,12 @@
 import ssl
 from functools import cache
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from time import sleep
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 import requests
+import requests_cache
 
 from modlib import ModBase, now, normalize_url, url_to_hostname
 
@@ -13,12 +15,18 @@ from modlib import ModBase, now, normalize_url, url_to_hostname
 def cert_checks(url: str):
     url = normalize_url(url)
     try:
-        requests.get(url)
+        r = requests.get(url, allow_redirects=False)
+        if r.from_cache:
+            print("CACHE HIT: " + url)
+        if not r.from_cache:
+            sleep(0.2)
     except:
+        print(f"Exception encountered when looking up cert for {url}")
         return ("critical", "invalid")
     url = url[len("https://") : -1]
     print(f"Looking up TLS cert for {url}")
     r = ssl.get_server_certificate((url, 443)).encode("utf-8")
+    sleep(1)
     cert = x509.load_pem_x509_certificate(r, default_backend())
     expires = datetime.fromisoformat(str(cert.not_valid_after_utc))
     delta = expires - datetime.now(timezone.utc)
@@ -74,7 +82,7 @@ class ModTLS(ModBase):
                 "operation": "discovery",
                 "resource": url_to_hostname(url),
                 "module": "dns",
-                "source": request["source"],
+                "source": "tls",
                 "timestamp": request["timestamp"],
             }
         )

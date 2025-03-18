@@ -58,20 +58,24 @@ class Module:
         assert not '"' in name
         assert not "\n" in name
         module_folder = f"/secdb/mount-state/modules/{name}"
+        cache_folder = f"/secdb/mount-state/"
         input_folder = f"{module_folder}/requests"
         output_folder = f"{module_folder}/responses"
         pathlib.Path(input_folder).mkdir(parents=True, exist_ok=True)
         pathlib.Path(output_folder).mkdir(parents=True, exist_ok=True)
-        command = (
-            f"cd '{module_folder}' && {command} '{input_folder}' '{output_folder}'"
-        )
+        pathlib.Path(cache_folder).mkdir(parents=True, exist_ok=True)
+        command = f"cd '{module_folder}' && {command} '{input_folder}' '{output_folder}' '{cache_folder}'"
         self._command = command
         self._module_folder = module_folder
         self._input_folder = input_folder
         self._output_folder = output_folder
+        self._cache_folder = cache_folder
         self._process = None
         self._request_backlog = []
         self._request_counter = 0
+
+    def get_cache_path(self):
+        return self._cache_folder + "http_cache"
 
     def _wait_process(self):
         if self.slow:
@@ -95,17 +99,21 @@ class Module:
         self._process = None
 
     def process_responses(self, callback):
+        print(f"Processing responses for {self.name}")
+        n = 0
         with os.scandir(self._output_folder) as it:
             for entry in it:
                 if not entry.is_file() or not entry.name.endswith(".json"):
                     continue
+                n += 1
                 with open(entry.path, "r") as f:
                     data = json.loads(f.read())
                 assert type(data) is list
                 for response in data:
                     callback(response)
-                print("Done processing request, deleting: " + entry.path)
+                print("Done processing response, deleting: " + entry.path)
                 os.unlink(entry.path)
+        print(f"Done processing {n} responses for {self.name}")
 
     def process_all_responses(self, callback):
         if self.slow:

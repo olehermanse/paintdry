@@ -50,10 +50,23 @@ CREATE TABLE IF NOT EXISTS observations (
     CONSTRAINT observations_constraint UNIQUE (module, attribute, resource)
 );
 
-DROP VIEW IF EXISTS pretty_observations;
-CREATE VIEW pretty_observations AS
+DROP VIEW IF EXISTS observations_pretty;
+CREATE VIEW observations_pretty AS
 SELECT module, resource, attribute, json_to_string(value) AS value, severity, first_seen, last_changed, last_seen
 FROM observations;
+
+DROP VIEW IF EXISTS observations_severity;
+CREATE VIEW observations_severity AS
+SELECT * FROM observations
+WHERE severity != '' AND severity != 'none'
+ORDER BY
+    CASE severity WHEN 'none' THEN 0
+                  WHEN 'recommendation' THEN 1
+                  WHEN 'low' THEN 2
+                  WHEN 'medium' THEN 3
+                  WHEN 'high' THEN 4
+                  WHEN 'critical' THEN 5
+    ELSE 10 END DESC;
 
 CREATE TABLE IF NOT EXISTS history (
     id serial PRIMARY KEY,
@@ -65,8 +78,8 @@ CREATE TABLE IF NOT EXISTS history (
     CONSTRAINT history_constraint UNIQUE (module, attribute, resource, timestamp)
 );
 
-DROP VIEW IF EXISTS pretty_history;
-CREATE VIEW pretty_history AS
+DROP VIEW IF EXISTS history_pretty;
+CREATE VIEW history_pretty AS
 SELECT module, resource, attribute, json_to_string(value) AS value, timestamp
 FROM history;
 
@@ -82,8 +95,8 @@ CREATE TABLE IF NOT EXISTS changes (
     CONSTRAINT changes_constraint UNIQUE (module, attribute, resource, timestamp, old_value, new_value)
 );
 
-DROP VIEW IF EXISTS pretty_changes;
-CREATE VIEW pretty_changes AS
+DROP VIEW IF EXISTS changes_pretty;
+CREATE VIEW changes_pretty AS
 SELECT module, resource, attribute, json_to_string(old_value) AS old_value, json_to_string(new_value) AS new_value, severity, timestamp
 FROM changes;
 

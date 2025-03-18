@@ -1,8 +1,32 @@
 # SecDB
 
-A modular system to track security relevant data points over time.
-Meant for things you don't expect to change at all, and you'd like a notification when they do.
-Examples: Checksums, redirects, certificates, security settings.
+A modular system to track security relevant data points over time, focusing on values you don't expect to change.
+
+Some examples:
+
+- Checksums of released software
+- Redirects for HTTP to HTTPS, security.txt files, etc.
+- SSL certificates
+- Security settings in GitHub
+
+When these things significantly change, it'd probably be nice to receive an alert.
+Given the premise of only focusing on data which is _expected to be static_, it is easier to make a system with fewer false positives.
+Other security monitoring systems usually focus on things like:
+
+- Numbers which change over time (uptime, requests per second, load average)
+- Log messages
+- Visual changes to websites and defacement attacks
+- Uptime monitoring ("Is the website down?")
+- Broken / 404 links
+
+While examining and tracking those things makes sense and is valuable, there is an inherent problem of noise and false positives.
+You have to look at patterns, and try to determine what is normal, and what is the threshold for something abnormal.
+
+However, it is valuable to turn the problem on its head, and ask the question:
+
+> What are the things we never expect to change?
+
+## Database
 
 Example data:
 
