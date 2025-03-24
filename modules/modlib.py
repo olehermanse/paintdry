@@ -52,6 +52,12 @@ def normalize_url(url: str) -> str:
     return url + "/"
 
 
+def respond_with_severity(request: dict, severity: str) -> list[dict]:
+    assert request["old_value"] != request["new_value"]
+    request["severity"] = severity
+    return [request]
+
+
 class ModBase:
     def __init__(self):
         self.cache_folder = None
@@ -66,9 +72,7 @@ class ModBase:
         return []
 
     def change(self, request: dict) -> list[dict]:
-        assert request["old_value"] != request["new_value"]
-        request["severity"] = "unknown"
-        return [request]
+        return respond_with_severity(request, "unknown")
 
     def handle_request(self, request: dict) -> list[dict]:
         assert type(request.get("operation", None)) is str

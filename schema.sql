@@ -100,6 +100,26 @@ CREATE VIEW changes_pretty AS
 SELECT module, resource, attribute, json_to_string(old_value) AS old_value, json_to_string(new_value) AS new_value, severity, timestamp
 FROM changes;
 
+DROP VIEW IF EXISTS changes_severity;
+CREATE VIEW changes_severity AS
+SELECT * FROM
+(
+  SELECT DISTINCT ON (module, resource, attribute)
+    id, module, resource, attribute, old_value, new_value, timestamp, severity
+  FROM changes
+  ORDER BY module, resource, attribute, timestamp DESC
+)
+WHERE severity != 'none'
+ORDER BY
+CASE severity
+    WHEN 'critical' THEN 5
+    WHEN 'high' THEN 4
+    WHEN 'medium' THEN 3
+    WHEN 'low' THEN 2
+    WHEN 'recommendation' THEN 1
+    WHEN 'notice' THEN 0
+ELSE 10 END DESC, timestamp DESC;
+
 CREATE OR REPLACE FUNCTION observations_to_history_function()
 RETURNS TRIGGER AS $observations_to_history_function$
 BEGIN

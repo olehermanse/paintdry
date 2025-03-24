@@ -1,7 +1,7 @@
 import socket
 import time
 from functools import cache
-from modlib import ModBase, now, normalize_hostname
+from modlib import ModBase, now, normalize_hostname, respond_with_severity
 
 
 @cache
@@ -67,10 +67,9 @@ class ModDNS(ModBase):
         ]
 
     def change(self, request):
-        response = super().change(request)
         if request["new_value"] == "":
-            response["severity"] = "high"
-        return response
+            return respond_with_severity(request, "high")
+        return respond_with_severity(request, "notice")
 
 
 def main():

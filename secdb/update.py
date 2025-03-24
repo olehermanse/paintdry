@@ -16,6 +16,7 @@ from secdb.lib import (
     Observation,
     Resource,
     ConfigTarget,
+    Change,
 )
 
 
@@ -43,6 +44,13 @@ def response_to_observation(response: ModuleResponse) -> Observation:
     assert data["operation"] == "observation"
     del data["operation"]
     return Observation(**data)
+
+
+def response_to_change(response: ModuleResponse) -> Change:
+    data = {**response}
+    assert data["operation"] == "change"
+    del data["operation"]
+    return Change(**data)
 
 
 class Module:
@@ -185,10 +193,22 @@ class Updater:
         self.discovery_backlog = []
 
     def send_requests(self, name: str, requests: list[ModuleRequest]):
+        # TODO: get rid of this
         module = self.get_module(name)
         if not module:
             return
         module.send_requests(requests)
+
+    def send_requests_auto(self, requests: list[ModuleRequest]):
+        per_module = {}
+        for request in requests:
+            if request.module not in per_module:
+                per_module[request.module] = []
+            per_module[request.module].append(request)
+        for module, arr in per_module.items():
+            module = self.get_module(module)
+            module.send_requests(arr)
+            module.start()
 
     def get_module(self, name: str) -> Module | None:
         if not name in self.modules:
@@ -298,8 +318,15 @@ class Updater:
             observation = response_to_observation(response)
             self.database.upsert_observations(observation)
             return
-        discovery = response_to_discovery(response)
-        self.process_discovery(module, discovery)
+        if response["operation"] == "discovery":
+            discovery = response_to_discovery(response)
+            self.process_discovery(module, discovery)
+            return
+        assert response["operation"] == "change"
+
+        change = response_to_change(response)
+        self.process_change(change)
+        return
 
     def process_responses(self):
         # (Non-blocking) Opportunistically process responses which are ready:
@@ -311,6 +338,24 @@ class Updater:
             callback = lambda response: self.process_response(name, response)
             module.process_all_responses(callback)
         self.process_discovery_backlog()
+
+    def process_change(self, change: Change):
+        self.database.update_change(change)
+        return
+
+    def process_changes(self):
+        changes = self.database.get_new_changes()
+        if not changes:
+            print("No new changes...")
+            return
+        print(f"Processing {len(changes)} new change(s):")
+        requests = []
+
+        for change in changes:
+            request = change.to_request()
+            requests.append(request)
+        self.send_requests_auto(requests)
+        print(f"Done processing {len(changes)} new change(s).")
 
     def update(self):
         clear_get_cache()
@@ -340,6 +385,9 @@ class Updater:
             assert module is not None
             module.start()
 
+        # Send change requests
+        self.process_changes()
+
         # Send requests based on config.json:
         for target in config["targets"]:
             for module in target["modules"]:
@@ -354,6 +402,9 @@ class Updater:
             assert module is not None
             module.start()
         self.process_responses()
+
+        # Send change requests
+        self.process_changes()
 
         # Commit snapshot
         metadata["last_update"] = {"time": time, "name": snapshot_name, "seq": seq}

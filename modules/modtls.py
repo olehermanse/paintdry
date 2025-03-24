@@ -8,7 +8,7 @@ from cryptography.hazmat.backends import default_backend
 import requests
 import requests_cache
 
-from modlib import ModBase, now, normalize_url, url_to_hostname
+from modlib import ModBase, now, normalize_url, url_to_hostname, respond_with_severity
 
 
 @cache
@@ -108,6 +108,11 @@ class ModTLS(ModBase):
             }
         )
         return observations
+
+    def change(self, request):
+        if request["new_value"] == "invalid":
+            return respond_with_severity(request, "critical")
+        return respond_with_severity(request, "notice")
 
 
 def main():

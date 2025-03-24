@@ -3,7 +3,7 @@ from time import sleep
 
 import psycopg2
 
-from secdb.lib import Observation, Resource
+from secdb.lib import Observation, Resource, Change
 
 
 def connect_loop():
@@ -42,6 +42,22 @@ class Database:
         conn.commit()
         cur.close()
         return result
+
+    def update_change(self, change: Change):
+        return self._query(
+            """
+            UPDATE changes
+            SET severity=%s
+            WHERE (severity='' OR severity='unknown') AND resource=%s AND attribute=%s AND old_value=%s AND new_value=%s
+            """,
+            (
+                change.severity,
+                change.resource,
+                change.attribute,
+                change.old_value,
+                change.new_value,
+            ),
+        )
 
     def upsert_resource(self, resource: Resource, source):
         return self._query(
@@ -139,14 +155,22 @@ class Database:
         self, table: str, columns: list[str], where: dict | None = None
     ) -> list[dict]:
         where_part = ""
-        where_keys = []
+        where_statements = []
         where_values = []
         if where:
             for key, value in where.items():
-                where_keys.append(key)
-                where_values.append(value)
-            strings = [f"{key}=%s" for key in where_keys]
-            where_part = "WHERE " + " AND ".join(strings)
+                if type(value) is list and len(value) == 1:
+                    where_values.append(value[0])
+                    where_statements.append(f"{key}=%s")
+                elif type(value) is not list:
+                    where_values.append(value)
+                    where_statements.append(f"{key}=%s")
+                else:
+                    assert type(value) is list and len(value) > 1
+                    where_values.extend(value)
+                    or_statements = [f"{key}=%s"] * len(value)
+                    where_statements.append(f"( {' OR '.join(or_statements)} )")
+            where_part = "WHERE " + " AND ".join(where_statements)
 
         query = f"""
         SELECT {', '.join(columns)}
@@ -259,4 +283,25 @@ class Database:
         results = []
         for object in objects:
             results.append(object)
+        return results
+
+    def get_new_changes(self) -> list[Change]:
+        objects = self._select(
+            "changes",
+            [
+                "id",
+                "resource",
+                "module",
+                "attribute",
+                "old_value",
+                "new_value",
+                "timestamp",
+            ],
+            {"severity": ["", "unknown"]},
+        )
+        if not objects:
+            return []
+        results = []
+        for object in objects:
+            results.append(Change(**object))
         return results

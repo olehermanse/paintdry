@@ -13,17 +13,25 @@ class ModuleRequest(dict):
         module: str,
         timestamp: int,
         source: str | None = None,
+        attribute: str | None = None,
+        old_value: str | None = None,
+        new_value: str | None = None,
     ):
         dict.__init__(
             self,
             operation=operation,
             resource=resource,
-            source=source,
             module=module,
             timestamp=timestamp,
         )
-        if source is None:
-            del self["source"]
+        if source is not None:
+            self["source"] = source
+        if attribute is not None:
+            self["attribute"] = attribute
+        if old_value is not None:
+            self["old_value"] = old_value
+        if new_value is not None:
+            self["new_value"] = new_value
         self.validate()
 
     def validate(self):
@@ -34,20 +42,39 @@ class ModuleRequest(dict):
                 if not type(self[key]) is str:
                     print(f"Error: key '{key}' is not str; " + json.dumps(self))
                 assert type(self[key]) is str
-        assert self["operation"] in ["discovery", "observation"]
+        assert self["operation"] in ["discovery", "observation", "change"]
         if self["operation"] == "discovery":
             print(json.dumps(self))
             assert "source" in self
             assert type(self["source"]) is str
             return
-
-        # observation:
+        if self["operation"] == "observation":
+            assert "source" not in self
+            assert "atribute" not in self
+            assert "old_value" not in self
+            assert "new_value" not in self
+            return
+        assert self["operation"] == "change"
         assert "source" not in self
+
+        assert "attribute" in self
+        assert self["attribute"]
+        assert type(self["attribute"]) is str
+
+        assert "old_value" in self
+        assert type(self["old_value"]) is str
+
+        assert "new_value" in self
+        assert type(self["new_value"]) is str
 
     def __setattr__(self, name: str, value: Any, /) -> None:
         if name not in self:
             raise AttributeError
         return super().__setattr__(name, value)
+
+    @property
+    def module(self):
+        return self["module"]
 
     @staticmethod
     def example():
@@ -78,6 +105,8 @@ class ModuleResponse(dict):
         source: str | None = None,
         attribute: str | None = None,
         value: str | int | None = None,
+        old_value: str | int | None = None,
+        new_value: str | int | None = None,
     ):
         dict.__init__(
             self,
@@ -89,7 +118,7 @@ class ModuleResponse(dict):
             attribute=attribute,
             value=value,
         )
-        for key in ["value", "source", "attribute"]:
+        for key in ["value", "source", "attribute", "new_value", "old_value"]:
             if self[key] is None:
                 del self[key]
         self.validate()
@@ -285,6 +314,42 @@ class Response:
         self.redirect_location = r.headers.get("Location", None)
         self.body = r.text
         self.timestamp = datetime.datetime.now()
+
+
+class Change:
+    def __init__(
+        self,
+        resource,
+        module,
+        attribute,
+        old_value,
+        new_value,
+        timestamp,
+        id=None,
+        severity: str = "",
+    ):
+        self.id = id
+        self.resource = resource
+        self.module = module
+        self.attribute = attribute
+        self.old_value = old_value
+        self.new_value = new_value
+        self.severity = severity
+        if isinstance(timestamp, datetime.datetime):
+            timestamp = timestamp.timestamp()
+        self.timestamp = int(timestamp)
+
+    def to_request(self) -> ModuleRequest:
+        data = {
+            "operation": "change",
+            "resource": self.resource,
+            "module": self.module,
+            "attribute": self.attribute,
+            "old_value": self.old_value,
+            "new_value": self.new_value,
+            "timestamp": self.timestamp,
+        }
+        return ModuleRequest(**data)
 
 
 _get_cache: dict[str, Response] = {}

@@ -3,9 +3,15 @@ from time import sleep
 from functools import cache
 
 import requests
-import requests_cache
 
-from modlib import ModBase, now, normalize_url, url_to_hostname, is_root_url
+from modlib import (
+    ModBase,
+    now,
+    normalize_url,
+    url_to_hostname,
+    is_root_url,
+    respond_with_severity,
+)
 
 
 def good_paths():
@@ -225,6 +231,20 @@ class ModHTTP(ModBase):
                 }
             )
         return observations
+
+    def change(self, request):
+        if request["new_value"] == "":
+            return respond_with_severity(request, "medium")
+        if request["attribute"] == "status_code":
+            if request["new_value"][0] == "4" or request["new_value"][0] == "5":
+                return respond_with_severity(request, "high")
+            severity = severity_from_status_code(
+                request["resource"], request["new_value"]
+            )
+            return respond_with_severity(request, severity)
+        if request["old_value"] == "":
+            return respond_with_severity(request, "none")
+        return respond_with_severity(request, "unknown")
 
 
 def main():
