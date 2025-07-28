@@ -31,3 +31,4 @@ gui/dist
 api_cache.sqlite
 secrets.json
 /config/config-override.json
+.DS_Store
