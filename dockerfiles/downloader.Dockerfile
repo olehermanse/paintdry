@@ -3,7 +3,7 @@ FROM fedora:40@sha256:7cdd2b48396929bb8723ea2fa60e03bee39cc22e2a853cbd891587fab4
 # RUN apk add --no-cache bash git openssh npm python3 py3-pip curl libpq-dev postgresql-client
 RUN yum update -y
 
-RUN yum install -y openssl gcc git
+RUN yum install -y openssl gcc git gpg
 RUN yum install -y python3 python3-pip python3-devel
 RUN yum install -y nodejs npm
 RUN npm install --global prettier

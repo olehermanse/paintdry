@@ -3,6 +3,7 @@ import json
 import sys
 import requests
 import requests_cache
+import subprocess
 from datetime import timedelta, datetime
 from time import sleep
 
@@ -70,7 +71,19 @@ def mkdir(path):
 def cmd(cmd):
     global token
     print("CMD: " + cmd.replace(token, "TOKEN"))
+    os.system(cmd)
+
+
+def cmd_exitcode(cmd):
+    global token
+    print("CMD: " + cmd.replace(token, "TOKEN"))
     return os.system(cmd)
+
+
+def cmd_stdout(cmd):
+    global token
+    print("CMD: " + cmd.replace(token, "TOKEN"))
+    return subprocess.check_output(cmd, shell=True)
 
 
 def user_error(message):
@@ -120,6 +133,16 @@ def main():
     github_repo_info(data, organizations)
     mkdir(f"{root}")
     mkdir(f"{root}/trivy-results")
+    # TODO: Get trusted path from config
+    trusted_path = (
+        os.path.abspath(
+            f"{root}/github.com/NorthernTechHQ/mystiko/branches/master/.pub-keys"
+        )
+        + "/"
+    )
+    if not os.path.exists(trusted_path):
+        trusted_path = None
+    assert trusted_path is not None, "Trusted path is not set"
     for website, organizations in data.items():
         path = os.path.join(root, website)
         mkdir(path)
@@ -168,17 +191,29 @@ def main():
                 clone_path = (
                     f"https://{username}:{token}@{website}/{org}/{reponame}.git"
                 )
-                clone_cmd = f"git clone --recurse-submodules --single-branch --depth 1 --shallow-submodules -b {default_branch} {clone_path} {default_branch_path}"
+                clone_cmd = f"git clone --recurse-submodules --single-branch --shallow-submodules -b {default_branch} {clone_path} {default_branch_path}"
                 pull_cmd = f"sh -c 'cd {default_branch_path} && git pull'"
+                unshallow_cmd = (
+                    f"sh -c 'cd {default_branch_path} && git fetch --unshallow'"
+                )
                 if not os.path.exists(default_branch_path):
                     cmd(clone_cmd)
                     sleep(2)
                 else:
                     cmd(pull_cmd)
                     sleep(1)
+                if (
+                    cmd_stdout(
+                        f"sh -c 'cd {default_branch_path} && git rev-parse --is-shallow-repository'"
+                    )
+                    == "true"
+                ):
+                    cmd(unshallow_cmd)
+                    sleep(2)
 
-                glrp_cmd = f"sh -c 'cd {default_branch_path} && glrp --compare 5d && mv .before.json ../../ && mv .after.json ../../'"
-                cmd(glrp_cmd)
+                if trusted_path:
+                    glrp_cmd = f"sh -c 'cd {default_branch_path} && glrp --trusted {trusted_path} --compare 5d && mv .before.json ../../ && mv .after.json ../../'"
+                    cmd(glrp_cmd)
                 now = datetime.now()
                 with open(ts_path, "w") as f:
                     f.write(now.isoformat() + "\n")
