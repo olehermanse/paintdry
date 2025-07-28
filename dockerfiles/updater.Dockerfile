@@ -16,6 +16,7 @@ RUN pip install -r requirements.txt
 COPY ./scripts/updater.sh /secdb/scripts/updater.sh
 COPY ./schema.sql /secdb/schema.sql
 COPY ./config/config.json /secdb/config/config.json
+COPY ./config/config-override.jso[n] /secdb/config/config.json
 COPY ./secdb /secdb/secdb
 COPY ./modules /secdb/modules
 CMD ["bash", "scripts/updater.sh"]

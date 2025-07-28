@@ -19,4 +19,5 @@ RUN pip install -r requirements.txt
 COPY ./secdb /secdb/secdb
 COPY --from=build /secdb/gui/dist /secdb/secdb/dist
 COPY ./config/config.json /secdb/config/config.json
+COPY ./config/config-override.jso[n] /secdb/config/config.json
 CMD ["python3", "secdb/server.py", "0.0.0.0", "8000"]

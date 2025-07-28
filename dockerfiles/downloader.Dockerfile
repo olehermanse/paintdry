@@ -13,6 +13,7 @@ WORKDIR /secdb
 COPY requirements.txt /secdb/
 RUN pip install -r requirements.txt
 COPY ./config/config.json /secdb/config/config.json
+COPY ./config/config-override.jso[n] /secdb/config/config.json
 COPY ./config/secrets.json /secdb/config/secrets.json
 COPY ./secdb /secdb/secdb
 COPY ./modules /secdb/modules

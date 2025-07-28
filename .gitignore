@@ -30,3 +30,4 @@ gui/dist
 /venv/
 api_cache.sqlite
 secrets.json
+/config/config-override.json
