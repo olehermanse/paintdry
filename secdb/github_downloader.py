@@ -177,6 +177,8 @@ def main():
                     cmd(pull_cmd)
                     sleep(1)
 
+                glrp_cmd = f"sh -c 'cd {default_branch_path} && glrp --compare 5d && mv .before.json ../../ && mv .after.json ../../'"
+                cmd(glrp_cmd)
                 now = datetime.now()
                 with open(ts_path, "w") as f:
                     f.write(now.isoformat() + "\n")
