@@ -1,5 +1,13 @@
 # SecDB
 
+## Run locally
+
+```sh
+docker compose build && docker compose up
+```
+
+## Rationale
+
 A modular system to track security relevant data points over time, focusing on values you don't expect to change.
 
 Some examples:
