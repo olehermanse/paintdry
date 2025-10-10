@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import type {} from "@mui/x-data-grid/themeAugmentation";
+import { Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 function columns(fields: string[]) {
@@ -74,7 +75,7 @@ function TableView({
   }
 
   return (
-    <>
+    <Box sx={{ width: "100%" }}>
       <h1>{header}</h1>
       <div style={{ height: "70vh", width: "100%" }}>
         <DataGrid
@@ -89,7 +90,7 @@ function TableView({
           autosizeOptions={autosizeOptions}
         />
       </div>
-    </>
+    </Box>
   );
 }
 
