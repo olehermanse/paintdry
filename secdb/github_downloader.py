@@ -142,7 +142,7 @@ def main():
     )
     if not os.path.exists(trusted_path):
         trusted_path = None
-    assert trusted_path is not None, "Trusted path is not set"
+    # assert trusted_path is not None, "Trusted path is not set"
     for website, organizations in data.items():
         path = os.path.join(root, website)
         mkdir(path)
