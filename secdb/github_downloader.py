@@ -106,6 +106,9 @@ def main():
         sys.exit(1)
 
     secrets_json = sys.argv[1]
+    if not os.path.isfile(secrets_json):
+        print("Warning: Secrets file missing - skipping downloads...")
+        sys.exit(0)
     root = sys.argv[2]
     cache_folder = sys.argv[3]
 
