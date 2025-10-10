@@ -6,6 +6,10 @@
 docker compose build && docker compose up
 ```
 
+Custom UI: http://127.0.0.1:9000
+
+PostgreSQL / pgweb: http://127.0.0.1:8000
+
 ## Rationale
 
 A modular system to track security relevant data points over time, focusing on values you don't expect to change.
