@@ -9,7 +9,23 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/ui" element={<Layout />}>
-          <Route index element={<ConfigView />} />
+          <Route
+            index
+            element={
+              <TableView
+                api={"/api/resources"}
+                header={"Resources"}
+                fields={[
+                  "id",
+                  "resource",
+                  "module",
+                  "source",
+                  "first_seen",
+                  "last_seen",
+                ]}
+              />
+            }
+          />
           <Route
             path="/ui/resources"
             element={
