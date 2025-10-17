@@ -305,3 +305,96 @@ class Database:
         for object in objects:
             results.append(Change(**object))
         return results
+
+    def search(self, search_string: str) -> dict:
+        """Search across resources, observations, and changes tables."""
+        if not search_string:
+            return {"query": search_string, "results": []}
+
+        search_pattern = f"%{search_string}%"
+        results = []
+
+        # Search resources
+        resource_rows = self._query(
+            """
+            SELECT id, resource, module, source, first_seen, last_seen
+            FROM resources
+            WHERE resource LIKE %s
+               OR module LIKE %s
+               OR source LIKE %s
+            LIMIT 50;
+            """,
+            (search_pattern, search_pattern, search_pattern)
+        )
+
+        for row in resource_rows:
+            results.append({
+                "type": "resource",
+                "resource": row[1],
+                "module": row[2],
+                "source": row[3],
+                "first_seen": row[4].isoformat() if row[4] else None,
+                "last_seen": row[5].isoformat() if row[5] else None,
+            })
+
+        # Search observations
+        observation_rows = self._query(
+            """
+            SELECT id, resource, module, attribute, value, first_seen, last_seen, severity
+            FROM observations
+            WHERE resource LIKE %s
+               OR module LIKE %s
+               OR attribute LIKE %s
+               OR value LIKE %s
+            LIMIT 50;
+            """,
+            (search_pattern, search_pattern, search_pattern, search_pattern)
+        )
+
+        for row in observation_rows:
+            result = {
+                "type": "observation",
+                "resource": row[1],
+                "module": row[2],
+                "attribute": row[3],
+                "value": row[4],
+                "first_seen": row[5].isoformat() if row[5] else None,
+                "last_seen": row[6].isoformat() if row[6] else None,
+            }
+            if row[7]:  # severity
+                result["severity"] = row[7]
+            results.append(result)
+
+        # Search changes
+        change_rows = self._query(
+            """
+            SELECT id, resource, module, attribute, old_value, new_value, timestamp, severity
+            FROM changes
+            WHERE resource LIKE %s
+               OR module LIKE %s
+               OR attribute LIKE %s
+               OR old_value LIKE %s
+               OR new_value LIKE %s
+            LIMIT 50;
+            """,
+            (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern)
+        )
+
+        for row in change_rows:
+            result = {
+                "type": "change",
+                "resource": row[1],
+                "module": row[2],
+                "attribute": row[3],
+                "old_value": row[4],
+                "new_value": row[5],
+                "timestamp": row[6].isoformat() if row[6] else None,
+            }
+            if row[7]:
+                result["severity"] = row[7]
+            results.append(result)
+
+        return {
+            "query": search_string,
+            "results": results
+        }

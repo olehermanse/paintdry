@@ -72,58 +72,7 @@ def api_get_changes(id):
 @app.route("/api/search", methods=["POST"])
 def api_search():
     search_string = request.json.get("search", "")
-    return {
-        "query": search_string,
-        "results": [
-            {
-                "type": "observation",
-                "resource": "http://cfengine.com/",
-                "module": "http",
-                "attribute": "status_code",
-                "value": "404",
-                "severity": "critical",
-                "first_seen": "2024-10-24 13:30:06",
-                "last_seen": "2024-10-24 13:30:28",
-            },
-            {
-                "type": "observation",
-                "resource": "http://cfengine.com/",
-                "module": "http",
-                "attribute": "redirect_location",
-                "value": "https://cfengine.com/",
-                "severity": "none",
-                "first_seen": "2024-10-24 13:30:06",
-                "last_seen": "2024-10-24 13:30:28",
-            },
-            {
-                "type": "resource",
-                "resource": "https://mender.io/",
-                "module": "http",
-                "source": "config.json",
-                "first_seen": "2024-10-24 13:30:06",
-                "last_seen": "2024-10-24 13:30:28",
-            },
-            {
-                "type": "resource",
-                "resource": "https://alvaldi.com/",
-                "module": "http",
-                "source": "config.json",
-                "first_seen": "2024-10-24 13:30:06",
-                "last_seen": "2024-10-24 13:30:28",
-            },
-            {
-                "type": "change",
-                "resource": "https://northern.tech/",
-                "module": "http",
-                "attribute": "status_code",
-                "old_value": "301",
-                "new_value": "404",
-                "severity": "critical",
-                "first_seen": "2024-10-24 13:30:06",
-                "last_seen": "2024-10-24 13:30:28",
-            },
-        ],
-    }
+    return database.search(search_string)
 
 
 @app.route("/")
