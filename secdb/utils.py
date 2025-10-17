@@ -5,7 +5,6 @@ import copy
 import subprocess
 import hashlib
 import datetime
-from urllib.parse import urlparse
 
 
 def timestamp():

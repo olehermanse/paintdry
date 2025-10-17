@@ -1,7 +1,6 @@
-import sys
 import json
 
-from flask import Flask, abort, current_app, send_from_directory, request
+from flask import Flask, abort, send_from_directory, request
 from flask.helpers import redirect
 
 from secdb.database import Database
