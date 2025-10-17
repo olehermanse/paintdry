@@ -3,7 +3,7 @@ import json
 from flask import Flask, abort, send_from_directory, request
 from flask.helpers import redirect
 
-from secdb.database import Database
+from paintdry.database import Database
 
 database = Database()
 

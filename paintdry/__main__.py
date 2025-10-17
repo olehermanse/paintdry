@@ -1,6 +1,6 @@
 import sys
-from secdb import server
-from secdb import update
+from paintdry import server
+from paintdry import update
 
 
 def main():
@@ -10,7 +10,7 @@ def main():
         "update-once",
         "update-forever",
     ):
-        print("Usage: python3 -m secdb <serve | update-once | update-forever>")
+        print("Usage: python3 -m paintdry <serve | update-once | update-forever>")
         sys.exit(1)
     match sys.argv[1]:
         case "serve":

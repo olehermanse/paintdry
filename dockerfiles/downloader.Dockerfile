@@ -9,13 +9,13 @@ RUN yum install -y nodejs npm
 RUN npm install --global prettier
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-WORKDIR /secdb
-COPY requirements.txt /secdb/
+WORKDIR /paintdry
+COPY requirements.txt /paintdry/
 RUN pip install -r requirements.txt
-COPY ./config/config.json /secdb/config/config.json
-COPY ./config/config-override.jso[n] /secdb/config/config.json
-COPY ./config/secrets.jso[n] /secdb/config/secrets.json
-COPY ./secdb /secdb/secdb
-COPY ./modules /secdb/modules
-COPY ./scripts/downloader.sh /secdb/scripts/downloader.sh
+COPY ./config/config.json /paintdry/config/config.json
+COPY ./config/config-override.jso[n] /paintdry/config/config.json
+COPY ./config/secrets.jso[n] /paintdry/config/secrets.json
+COPY ./paintdry /paintdry/paintdry
+COPY ./modules /paintdry/modules
+COPY ./scripts/downloader.sh /paintdry/scripts/downloader.sh
 CMD ["bash", "scripts/downloader.sh"]

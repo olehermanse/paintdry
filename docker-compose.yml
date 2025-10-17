@@ -18,7 +18,7 @@ services:
     build:
       context: .
       dockerfile: dockerfiles/gui.Dockerfile
-    command: python3 -m secdb serve
+    command: python3 -m paintdry serve
     ports:
       - "8000:8000"
     environment:
@@ -32,7 +32,7 @@ services:
       context: .
       dockerfile: dockerfiles/updater.Dockerfile
     volumes:
-      - ./mount-state:/secdb/mount-state
+      - ./mount-state:/paintdry/mount-state
     environment:
       - PGHOST=postgres
       - PGDATABASE=postgres
@@ -45,4 +45,4 @@ services:
       context: .
       dockerfile: dockerfiles/downloader.Dockerfile
     volumes:
-      - ./mount-state:/secdb/mount-state
+      - ./mount-state:/paintdry/mount-state

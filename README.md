@@ -1,6 +1,42 @@
-# SecDB
+# paintdry - Watch things not change
+
+This project is a security oriented tool for "monitoring" things you don't expect to change.
+When they do change, this is somewhwat rare / unexpected, and worthy of some kind of alert.
+It is implemented in a modular way, to be easily extended with more things to monitor.
+
+The backend uses Python / Flask for the API and PostgreSQL for the database.
+2 UIs are provided: pgweb to browse and query tables, as well as a custom UI written in React.
+
+Some examples of things you might want to "monitor" in this way:
+
+- Checksums:
+  - Commit SHA associated with a version tag in a git repository.
+  - SHA checksum of downloads (installer / binaries).
+  - Digest of docker images for specific versions.
+- HTTP:
+  - You always expect HTTP to redirect to https.
+  - Something which is currently status code 200 / 301, you don't expect to change to 404.
+  - Security related HTTP headers (like CSP).
+- HTML:
+  - Number of script tags / domains where javascript is retrieved from.
+  - Download links for software.
+- GitHub:
+  - Whether a repository is public / private.
+  - What security settings are enabled or a GitHub repo or organization.
+- Git:
+  - Number of unsigned commits you've made.
+    If you sign all your commits, it should be constant or zero.
+
+All of these are "arguable", depending on how you use git, manage your website, release software, etc. so the goal is to provide configurability to use the tool for things which make sense in your situation.
 
 ## Test locally
+
+First, clone the repo:
+
+```sh
+git clone https://github.com/olehermanse/paintdry
+cd paintdry
+```
 
 The repo comes with an example config, after cloning you should be able to run it using `docker compose`:
 
@@ -13,15 +49,6 @@ Custom UI: http://127.0.0.1:9000
 PostgreSQL / pgweb: http://127.0.0.1:8000
 
 ## Rationale
-
-A modular system to track security relevant data points over time, focusing on values you don't expect to change.
-
-Some examples:
-
-- Checksums of released software
-- Redirects for HTTP to HTTPS, security.txt files, etc.
-- SSL certificates
-- Security settings in GitHub
 
 When these things significantly change, it'd probably be nice to receive an alert.
 Given the premise of only focusing on data which is _expected to be static_, it is easier to make a system with fewer false positives.
@@ -122,16 +149,16 @@ It could for example look like this, if you're interested in monitoring Northern
   ],
   "modules": {
     "dns": {
-      "command": "python3 /secdb/modules/moddns.py"
+      "command": "python3 /paintdry/modules/moddns.py"
     },
     "http": {
-      "command": "python3 /secdb/modules/modhttp.py"
+      "command": "python3 /paintdry/modules/modhttp.py"
     },
     "tls": {
-      "command": "python3 /secdb/modules/modtls.py"
+      "command": "python3 /paintdry/modules/modtls.py"
     },
     "github": {
-      "command": "python3 /secdb/modules/modgithub.py",
+      "command": "python3 /paintdry/modules/modgithub.py",
       "slow": true
     }
   }

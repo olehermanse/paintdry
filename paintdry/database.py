@@ -3,7 +3,7 @@ from time import sleep
 
 import psycopg2
 
-from secdb.lib import Observation, Resource, Change
+from paintdry.lib import Observation, Resource, Change
 
 
 def connect_loop():
@@ -324,19 +324,21 @@ class Database:
                OR source LIKE %s
             LIMIT 50;
             """,
-            (search_pattern, search_pattern, search_pattern)
+            (search_pattern, search_pattern, search_pattern),
         )
 
         for row in resource_rows:
-            results.append({
-                "type": "resource",
-                "id": str(row[0]),
-                "resource": row[1],
-                "module": row[2],
-                "source": row[3],
-                "first_seen": row[4].isoformat() if row[4] else None,
-                "last_seen": row[5].isoformat() if row[5] else None,
-            })
+            results.append(
+                {
+                    "type": "resource",
+                    "id": str(row[0]),
+                    "resource": row[1],
+                    "module": row[2],
+                    "source": row[3],
+                    "first_seen": row[4].isoformat() if row[4] else None,
+                    "last_seen": row[5].isoformat() if row[5] else None,
+                }
+            )
 
         # Search observations
         observation_rows = self._query(
@@ -349,7 +351,7 @@ class Database:
                OR value LIKE %s
             LIMIT 50;
             """,
-            (search_pattern, search_pattern, search_pattern, search_pattern)
+            (search_pattern, search_pattern, search_pattern, search_pattern),
         )
 
         for row in observation_rows:
@@ -379,7 +381,13 @@ class Database:
                OR new_value LIKE %s
             LIMIT 50;
             """,
-            (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern)
+            (
+                search_pattern,
+                search_pattern,
+                search_pattern,
+                search_pattern,
+                search_pattern,
+            ),
         )
 
         for row in change_rows:
@@ -397,7 +405,4 @@ class Database:
                 result["severity"] = row[7]
             results.append(result)
 
-        return {
-            "query": search_string,
-            "results": results
-        }
+        return {"query": search_string, "results": results}

@@ -6,9 +6,9 @@ import pathlib
 from time import sleep
 from subprocess import Popen, PIPE, STDOUT
 
-from secdb.utils import JsonFile, ensure_folder, sha, timestamp
-from secdb.database import Database
-from secdb.lib import (
+from paintdry.utils import JsonFile, ensure_folder, sha, timestamp
+from paintdry.database import Database
+from paintdry.lib import (
     ModuleRequest,
     ModuleResponse,
     clear_get_cache,
@@ -65,8 +65,8 @@ class Module:
         assert not "'" in name
         assert not '"' in name
         assert not "\n" in name
-        module_folder = f"/secdb/mount-state/modules/{name}"
-        cache_folder = f"/secdb/mount-state/"
+        module_folder = f"/paintdry/mount-state/modules/{name}"
+        cache_folder = f"/paintdry/mount-state/"
         input_folder = f"{module_folder}/requests"
         output_folder = f"{module_folder}/responses"
         pathlib.Path(input_folder).mkdir(parents=True, exist_ok=True)
