@@ -10,7 +10,7 @@ function columns(fields: string[]) {
     const o: GridColDef = {
       field: field,
       headerName: field,
-      flex: 1 // fixes the issue :upside_down_face: grow to fill space
+      flex: 1, // fixes the issue :upside_down_face: grow to fill space
     };
     if (field === "id") {
       o.maxWidth = 80;
