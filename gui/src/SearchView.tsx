@@ -92,13 +92,13 @@ const SearchView = () => {
                   <TableCell>
                     {result.type === "observation" && result.attribute && (
                       <>
-                        <strong>attribute:</strong> {result.attribute}
+                        <strong>Attribute:</strong> {result.attribute}
                         <br />
-                        <strong>value:</strong> {result.value}
+                        <strong>Value:</strong> {result.value}
                         <br />
                         {result.severity && (
                           <>
-                            <strong>severity:</strong> {result.severity}
+                            <strong>Severity:</strong> {result.severity}
                             <br />
                           </>
                         )}
@@ -109,15 +109,15 @@ const SearchView = () => {
                     )}
                     {result.type === "change" && result.attribute && (
                       <>
-                        <strong>attribute:</strong> {result.attribute}
+                        <strong>Attribute:</strong> {result.attribute}
                         <br />
-                        <strong>old_value:</strong> {result.old_value}
+                        <strong>Old value:</strong> {result.old_value}
                         <br />
-                        <strong>new_value:</strong> {result.new_value}
+                        <strong>New value:</strong> {result.new_value}
                         <br />
                         {result.severity && (
                           <>
-                            <strong>severity:</strong> {result.severity}
+                            <strong>Severity:</strong> {result.severity}
                             <br />
                           </>
                         )}
