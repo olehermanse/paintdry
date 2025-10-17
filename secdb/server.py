@@ -82,7 +82,34 @@ def api_search():
                 "module": "http",
                 "attribute": "status_code",
                 "value": "301",
-            }
+                "first_seen": "2024-10-24 13:30:06",
+                "last_seen": "2024-10-24 13:30:28",
+            },
+            {
+                "type": "observation",
+                "resource": "http://cfengine.com/",
+                "module": "http",
+                "attribute": "redirect_location",
+                "value": "https://cfengine.com/",
+                "first_seen": "2024-10-24 13:30:06",
+                "last_seen": "2024-10-24 13:30:28",
+            },
+            {
+                "type": "resource",
+                "resource": "https://mender.io/",
+                "module": "http",
+                "source": "config.json",
+                "first_seen": "2024-10-24 13:30:06",
+                "last_seen": "2024-10-24 13:30:28",
+            },
+            {
+                "type": "resource",
+                "resource": "https://alvaldi.com/",
+                "module": "http",
+                "source": "config.json",
+                "first_seen": "2024-10-24 13:30:06",
+                "last_seen": "2024-10-24 13:30:28",
+            },
         ],
     }
 
