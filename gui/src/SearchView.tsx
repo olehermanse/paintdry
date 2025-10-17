@@ -10,6 +10,7 @@ interface SearchResult {
   old_value?: string;
   new_value?: string;
   source?: string;
+  severity?: string;
   first_seen: string;
   last_seen: string;
 }
@@ -83,6 +84,12 @@ const SearchView = () => {
                         <br />
                         <strong>value:</strong> {result.value}
                         <br />
+                        {result.severity && (
+                          <>
+                            <strong>severity:</strong> {result.severity}
+                            <br />
+                          </>
+                        )}
                         <strong>First seen:</strong> {result.first_seen}
                         <br />
                         <strong>Last seen:</strong> {result.last_seen}
@@ -96,6 +103,12 @@ const SearchView = () => {
                         <br />
                         <strong>new_value:</strong> {result.new_value}
                         <br />
+                        {result.severity && (
+                          <>
+                            <strong>severity:</strong> {result.severity}
+                            <br />
+                          </>
+                        )}
                         <strong>First seen:</strong> {result.first_seen}
                         <br />
                         <strong>Last seen:</strong> {result.last_seen}
