@@ -9,7 +9,14 @@ function a11yProps(index: number) {
   };
 }
 
-const tabs = ["resources", "observations", "changes", "history", "config", "search"];
+const tabs = [
+  "resources",
+  "observations",
+  "changes",
+  "history",
+  "config",
+  "search",
+];
 
 function choose_index(value: string): number {
   for (let i = 0; i < tabs.length; i++) {
