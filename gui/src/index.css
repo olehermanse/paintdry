@@ -1,4 +1,4 @@
-h1 {
+* {
   font-family: sans-serif;
 }
 
@@ -11,10 +11,12 @@ h1 {
   padding: 1em;
   margin: 1em;
   border-radius: 0.3em;
+  font-family: monospace;
 }
 
 :not(pre) > code {
   background: #dddddd;
   padding: 4px;
   border-radius: 4px;
+  font-family: monospace;
 }
