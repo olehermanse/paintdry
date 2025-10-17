@@ -7,6 +7,8 @@ interface SearchResult {
   module: string;
   attribute?: string;
   value?: string;
+  old_value?: string;
+  new_value?: string;
   source?: string;
   first_seen: string;
   last_seen: string;
@@ -80,6 +82,19 @@ const SearchView = () => {
                         <strong>attribute:</strong> {result.attribute}
                         <br />
                         <strong>value:</strong> {result.value}
+                        <br />
+                        <strong>First seen:</strong> {result.first_seen}
+                        <br />
+                        <strong>Last seen:</strong> {result.last_seen}
+                      </>
+                    )}
+                    {result.type === "change" && result.attribute && (
+                      <>
+                        <strong>attribute:</strong> {result.attribute}
+                        <br />
+                        <strong>old_value:</strong> {result.old_value}
+                        <br />
+                        <strong>new_value:</strong> {result.new_value}
                         <br />
                         <strong>First seen:</strong> {result.first_seen}
                         <br />
