@@ -4,8 +4,12 @@ set -x
 
 find /secdb/mount-state/modules/ -name '*.json' -delete || true
 
-sleep 10
-psql -f schema.sql
+echo "Waiting for database to be ready and applying schema..."
+until psql -f schema.sql; do
+  echo "Schema application failed, retrying in 5 seconds..."
+  sleep 5
+done
+echo "Schema successfully applied!"
 
 while true; do
   echo "SELECT * FROM resources LIMIT 5;"
