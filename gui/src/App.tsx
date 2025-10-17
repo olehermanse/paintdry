@@ -16,7 +16,6 @@ function App() {
               <TableView
                 api={"/api/resources"}
                 fields={[
-                  "id",
                   "resource",
                   "module",
                   "source",
@@ -32,7 +31,6 @@ function App() {
               <TableView
                 api={"/api/resources"}
                 fields={[
-                  "id",
                   "resource",
                   "module",
                   "source",
@@ -52,7 +50,6 @@ function App() {
               <TableView
                 api={"/api/observations"}
                 fields={[
-                  "id",
                   "resource",
                   "module",
                   "attribute",
@@ -74,7 +71,6 @@ function App() {
               <TableView
                 api={"/api/changes"}
                 fields={[
-                  "id",
                   "resource",
                   "module",
                   "attribute",
@@ -95,7 +91,6 @@ function App() {
               <TableView
                 api={"/api/history"}
                 fields={[
-                  "id",
                   "resource",
                   "module",
                   "attribute",
