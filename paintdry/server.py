@@ -72,7 +72,8 @@ def api_get_changes(id):
 @app.route("/api/search", methods=["POST"])
 def api_search():
     search_string = request.json.get("search", "")
-    return database.search(search_string)
+    page = request.json.get("page", 1)
+    return database.search(search_string, page)
 
 
 @app.route("/")
