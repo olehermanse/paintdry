@@ -37,15 +37,7 @@ async function fetch_table_data(url: string) {
   return observations;
 }
 
-function TableView({
-  fields,
-  api,
-  header,
-}: {
-  fields: string[];
-  api: string;
-  header: string;
-}) {
+function TableView({ fields, api }: { fields: string[]; api: string }) {
   const [status, setStatus] = useState("loading");
   const [rows, setRows] = useState([]);
   useEffect(() => {
@@ -79,7 +71,6 @@ function TableView({
 
   return (
     <Box sx={{ width: "100%" }}>
-      <h1>{header}</h1>
       <div style={{ height: "70vh", width: "100%" }}>
         <DataGrid
           onRowClick={(params) => {

@@ -16,7 +16,6 @@ function ConfigView() {
   }, []);
   return (
     <>
-      <h1>Config:</h1>
       <p>
         The code block below shows the contents of{" "}
         <code>config/config.json</code>. There is also some "config" in{" "}

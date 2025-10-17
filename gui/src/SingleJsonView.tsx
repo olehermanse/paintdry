@@ -32,7 +32,6 @@ function SingleJsonView({ api }: { api: string }) {
   }, [api, id]);
   return (
     <>
-      <h1>Details:</h1>
       <pre className="code-block">
         <code>{JSON.stringify(rawData, null, 2)}</code>
       </pre>
