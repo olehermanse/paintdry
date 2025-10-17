@@ -11,8 +11,9 @@ interface SearchResult {
   new_value?: string;
   source?: string;
   severity?: string;
-  first_seen: string;
-  last_seen: string;
+  first_seen?: string;
+  last_seen?: string;
+  timestamp?: string;
 }
 
 const SearchView = () => {
@@ -109,9 +110,7 @@ const SearchView = () => {
                             <br />
                           </>
                         )}
-                        <strong>First seen:</strong> {result.first_seen}
-                        <br />
-                        <strong>Last seen:</strong> {result.last_seen}
+                        <strong>timestamp:</strong> {result.timestamp}
                       </>
                     )}
                     {result.type === "resource" && (
