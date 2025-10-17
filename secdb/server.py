@@ -110,6 +110,16 @@ def api_search():
                 "first_seen": "2024-10-24 13:30:06",
                 "last_seen": "2024-10-24 13:30:28",
             },
+            {
+                "type": "change",
+                "resource": "https://northern.tech/",
+                "module": "http",
+                "attribute": "status_code",
+                "old_value": "301",
+                "new_value": "200",
+                "first_seen": "2024-10-24 13:30:06",
+                "last_seen": "2024-10-24 13:30:28",
+            },
         ],
     }
 
