@@ -1,3 +1,6 @@
+-- Enable UUID extension for auto-generated UUIDs
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE OR REPLACE FUNCTION json_to_string(json_column TEXT) RETURNS TEXT AS $$
 DECLARE
     formatted_text TEXT;
@@ -28,7 +31,7 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
 CREATE TABLE IF NOT EXISTS resources (
-    id serial PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     resource TEXT NOT NULL,
     module TEXT NOT NULL,
     source TEXT NOT NULL,
@@ -38,7 +41,7 @@ CREATE TABLE IF NOT EXISTS resources (
 );
 
 CREATE TABLE IF NOT EXISTS observations (
-    id serial PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     resource TEXT NOT NULL,
     module TEXT NOT NULL,
     attribute TEXT NOT NULL,
@@ -69,7 +72,7 @@ ORDER BY
     ELSE 10 END DESC;
 
 CREATE TABLE IF NOT EXISTS history (
-    id serial PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     resource TEXT NOT NULL,
     module TEXT NOT NULL,
     attribute TEXT NOT NULL,
@@ -84,7 +87,7 @@ SELECT module, resource, attribute, json_to_string(value) AS value, timestamp
 FROM history;
 
 CREATE TABLE IF NOT EXISTS changes (
-    id serial PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     resource TEXT NOT NULL,
     module TEXT NOT NULL,
     attribute TEXT NOT NULL,

@@ -103,7 +103,7 @@ class Database:
             ),
         )
 
-    def get_resource(self, id: int) -> Resource | None:
+    def get_resource(self, id: str) -> Resource | None:
         rows = self._query(
             """
             SELECT id, resource, module, source, first_seen, last_seen
@@ -213,7 +213,7 @@ class Database:
             results.append(result)
         return results
 
-    def get_observation(self, id: int) -> Observation | None:
+    def get_observation(self, id: str) -> Observation | None:
         rows = self._query(
             """
             SELECT id, resource, module, attribute, value, first_seen, last_changed, last_seen, severity
@@ -242,7 +242,7 @@ class Database:
             return results[0]
         return None
 
-    def get_history(self, id: int | None = None) -> list[dict]:
+    def get_history(self, id: str | None = None) -> list[dict]:
         singular = id is not None
         objects = self._select(
             "history",
@@ -263,7 +263,7 @@ class Database:
             results.append(object)
         return results
 
-    def get_changes(self, id: int | None = None) -> list[dict]:
+    def get_changes(self, id: str | None = None) -> list[dict]:
         singular = id is not None
         objects = self._select(
             "changes",
@@ -330,6 +330,7 @@ class Database:
         for row in resource_rows:
             results.append({
                 "type": "resource",
+                "id": str(row[0]),
                 "resource": row[1],
                 "module": row[2],
                 "source": row[3],
@@ -354,6 +355,7 @@ class Database:
         for row in observation_rows:
             result = {
                 "type": "observation",
+                "id": str(row[0]),
                 "resource": row[1],
                 "module": row[2],
                 "attribute": row[3],
@@ -383,6 +385,7 @@ class Database:
         for row in change_rows:
             result = {
                 "type": "change",
+                "id": str(row[0]),
                 "resource": row[1],
                 "module": row[2],
                 "attribute": row[3],

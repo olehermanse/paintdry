@@ -15,7 +15,7 @@ def api_resources():
     return database.get_resources()
 
 
-@app.route("/api/resources/<int:id>")
+@app.route("/api/resources/<string:id>")
 def api_get_resource(id):
     result = database.get_resource(id)
     if not result:
@@ -35,7 +35,7 @@ def api_observations():
     return database.get_observations()
 
 
-@app.route("/api/observations/<int:id>")
+@app.route("/api/observations/<string:id>")
 def api_get_observation(id):
     result = database.get_observation(id)
     if not result:
@@ -48,7 +48,7 @@ def api_history():
     return database.get_history()
 
 
-@app.route("/api/history/<int:id>")
+@app.route("/api/history/<string:id>")
 def api_get_history(id):
     result = database.get_history(id)
     if not result:
@@ -61,7 +61,7 @@ def api_changes():
     return database.get_changes()
 
 
-@app.route("/api/changes/<int:id>")
+@app.route("/api/changes/<string:id>")
 def api_get_changes(id):
     result = database.get_changes(id)
     if not result:
