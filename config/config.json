@@ -7,16 +7,16 @@
   ],
   "modules": {
     "dns": {
-      "command": "python3 /secdb/modules/moddns.py"
+      "command": "python3 /paintdry/modules/moddns.py"
     },
     "http": {
-      "command": "python3 /secdb/modules/modhttp.py"
+      "command": "python3 /paintdry/modules/modhttp.py"
     },
     "tls": {
-      "command": "python3 /secdb/modules/modtls.py"
+      "command": "python3 /paintdry/modules/modtls.py"
     },
     "github": {
-      "command": "python3 /secdb/modules/modgithub.py",
+      "command": "python3 /paintdry/modules/modgithub.py",
       "slow": true
     }
   }
