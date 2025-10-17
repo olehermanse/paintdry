@@ -2,8 +2,10 @@
 
 This project is a security oriented tool for "monitoring" things you don't expect to change.
 When they do change, this is somewhwat rare / unexpected, and worthy of some kind of alert.
-It is implemented in a modular way, to be easily extended with more things to monitor.
+Other monitoring tools focus on trends and graphs and spikes and outliers, this one focuses on all the security-relevant information we can gather and store, which typically stays constant.
+The graphs will be boring, though.
 
+paintdry is implemented in a modular way, to be easily extended with more things to monitor.
 The backend uses Python / Flask for the API and PostgreSQL for the database.
 2 UIs are provided: pgweb to browse and query tables, as well as a custom UI written in React.
 
@@ -47,25 +49,6 @@ docker compose build && docker compose up
 Custom UI: http://127.0.0.1:9000
 
 PostgreSQL / pgweb: http://127.0.0.1:8000
-
-## Rationale
-
-When these things significantly change, it'd probably be nice to receive an alert.
-Given the premise of only focusing on data which is _expected to be static_, it is easier to make a system with fewer false positives.
-Other security monitoring systems usually focus on things like:
-
-- Numbers which change over time (uptime, requests per second, load average)
-- Log messages
-- Visual changes to websites and defacement attacks
-- Uptime monitoring ("Is the website down?")
-- Broken / 404 links
-
-While examining and tracking those things makes sense and is valuable, there is an inherent problem of noise and false positives.
-You have to look at patterns, and try to determine what is normal, and what is the threshold for something abnormal.
-
-However, it is valuable to turn the problem on its head, and ask the question:
-
-> What are the things we never expect to change?
 
 ## Severity
 
