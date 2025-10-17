@@ -306,13 +306,20 @@ class Database:
             results.append(Change(**object))
         return results
 
-    def search(self, search_string: str) -> dict:
-        """Search across resources, observations, and changes tables."""
+    def search(self, search_string: str, page: int = 1) -> dict:
+        """Search across resources, observations, and changes tables with pagination."""
         if not search_string:
-            return {"query": search_string, "results": []}
+            return {
+                "query": search_string,
+                "results": [],
+                "page": page,
+                "per_page": 50,
+                "total_results": 0,
+                "total_pages": 0,
+            }
 
         search_pattern = f"%{search_string}%"
-        results = []
+        all_results = []
 
         # Search resources
         resource_rows = self._query(
@@ -321,14 +328,13 @@ class Database:
             FROM resources
             WHERE resource LIKE %s
                OR module LIKE %s
-               OR source LIKE %s
-            LIMIT 50;
+               OR source LIKE %s;
             """,
             (search_pattern, search_pattern, search_pattern),
         )
 
         for row in resource_rows:
-            results.append(
+            all_results.append(
                 {
                     "type": "resource",
                     "id": str(row[0]),
@@ -348,8 +354,7 @@ class Database:
             WHERE resource LIKE %s
                OR module LIKE %s
                OR attribute LIKE %s
-               OR value LIKE %s
-            LIMIT 50;
+               OR value LIKE %s;
             """,
             (search_pattern, search_pattern, search_pattern, search_pattern),
         )
@@ -367,7 +372,7 @@ class Database:
             }
             if row[7]:  # severity
                 result["severity"] = row[7]
-            results.append(result)
+            all_results.append(result)
 
         # Search changes
         change_rows = self._query(
@@ -378,8 +383,7 @@ class Database:
                OR module LIKE %s
                OR attribute LIKE %s
                OR old_value LIKE %s
-               OR new_value LIKE %s
-            LIMIT 50;
+               OR new_value LIKE %s;
             """,
             (
                 search_pattern,
@@ -403,6 +407,29 @@ class Database:
             }
             if row[7]:
                 result["severity"] = row[7]
-            results.append(result)
+            all_results.append(result)
 
-        return {"query": search_string, "results": results}
+        # Calculate pagination
+        per_page = 50
+        total_results = len(all_results)
+        total_pages = (total_results + per_page - 1) // per_page  # Ceiling division
+
+        # Ensure page is within valid range
+        if page < 1:
+            page = 1
+        elif page > total_pages and total_pages > 0:
+            page = total_pages
+
+        # Calculate slice indices
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_results = all_results[start_idx:end_idx]
+
+        return {
+            "query": search_string,
+            "results": paginated_results,
+            "page": page,
+            "per_page": per_page,
+            "total_results": total_results,
+            "total_pages": total_pages,
+        }
