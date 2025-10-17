@@ -17,6 +17,7 @@ function ConfigView() {
   return (
     <>
       <h1>Config:</h1>
+      <p>The code block below shows the contents of <code>config/config.json</code>. There is also some "config" in <code>config/secrets.json</code>, but we don't want to expose that, for obvious reasons. </p>
       <pre className="code-block">
         <code>{JSON.stringify(rawData, null, 2)}</code>
       </pre>

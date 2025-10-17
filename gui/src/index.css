@@ -12,3 +12,9 @@ h1 {
   margin: 1em;
   border-radius: 0.3em;
 }
+
+:not(pre) > code {
+  background: #dddddd;
+  padding: 4px;
+  border-radius: 4px;
+}
