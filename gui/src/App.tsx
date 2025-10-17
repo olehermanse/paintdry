@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./Layout";
 import ConfigView from "./ConfigView";
 import SingleJsonView from "./SingleJsonView";
+import SearchView from "./SearchView";
 
 function App() {
   return (
@@ -114,6 +115,7 @@ function App() {
             element={<SingleJsonView api={"/api/history"} />}
           />
           <Route path="/ui/config" element={<ConfigView />} />
+          <Route path="/ui/search" element={<SearchView />} />
           <Route path="*" element={<div> Page not found... </div>} />
         </Route>
       </Routes>
