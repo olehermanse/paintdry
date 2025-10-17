@@ -1,6 +1,8 @@
 # SecDB
 
-## Run locally
+## Test locally
+
+The repo comes with an example config, after cloning you should be able to run it using `docker compose`:
 
 ```sh
 docker compose build && docker compose up
@@ -38,11 +40,26 @@ However, it is valuable to turn the problem on its head, and ask the question:
 
 > What are the things we never expect to change?
 
+## Severity
+
+The observations and changes receive a severity level to highlight / rank suspicious values.
+Here is a guideline for which level to use:
+
+- `critical` - Urgent issue which is definitely bad and needs immediate attention.
+- `high` - Severe issue with real impact and little to no doubt that it's a real issue.
+- `medium` - Something which could be bad, but the impact or certainty is limited.
+- `low` - Security issues which are not generally exploitable, but could be under certain circumstances.
+- `recommendation` - Recommendations which should be fixed, but not directly exploitable.
+- `notice` - Notice about a value or change which is noteworthy / doesn't happen often, but needs to be reviewed by a human to understand the impact.
+- `unknown` - The module has tried to assess the severity, but it is unknown - likely the module needs to be updated.
+- `none` - The value / change is determined to not be an issue at all and should be hidden from views highlighting issues / improvements.
+- _Empty string_ - The severity has not been assessed at all, not sent to module yet or no response received back.
+
 ## Database
 
 Example data:
 
-```SQL
+```
 SELECT * FROM resources;
         id |        resource        | module  |   source    |         first_seen         |         last_seen
 -----------+------------------------+---------+-------------+----------------------------+----------------------------
@@ -74,19 +91,62 @@ SELECT * FROM observations;
 (12 rows)
 ```
 
-## Setup
+## Configuration
 
-Manually create `config/secrets.json`:
+By default, the repo will work with some example configuration (as can be seen in `config/config.json`).
 
+You can override it with your own configuration;
+
+```bash
+cp config/config.json config/config-override.json
 ```
+
+Start editing `config-override.json` to your liking.
+It could for example look like this, if you're interested in monitoring Northern.tech resources:
+
+```json
+{
+  "targets": [
+    {
+      "modules": ["http", "dns", "tls"],
+      "resources": [
+        "https://northern.tech",
+        "https://cfengine.com",
+        "https://mender.io"
+      ]
+    },
+    {
+      "modules": ["github"],
+      "resources": ["NorthernTechHQ", "mendersoftware", "cfengine"]
+    }
+  ],
+  "modules": {
+    "dns": {
+      "command": "python3 /secdb/modules/moddns.py"
+    },
+    "http": {
+      "command": "python3 /secdb/modules/modhttp.py"
+    },
+    "tls": {
+      "command": "python3 /secdb/modules/modtls.py"
+    },
+    "github": {
+      "command": "python3 /secdb/modules/modgithub.py",
+      "slow": true
+    }
+  }
+}
+```
+
+If you're using modules which need secrets, such as the `github` module, you will need to create the `config/secrets.json`:
+
+```json
 {
   "github_username": "olehermanse",
   "github_access_token": "PUT_GITHUB_PERSONAL_ACCESS_TOKEN_CLASSIC_HERE",
   "github_organizations": ["NorthernTechHQ", "cfengine", "mendersoftware"]
 }
 ```
-
-Also, edit `config/config.json` to avoid using our default config (especially if you don't have access to those repos).
 
 ## Run
 
@@ -98,26 +158,11 @@ docker compose build && docker compose up
 
 Open the UI:
 
-http://127.0.0.1:8000/ui
+http://127.0.0.1:8000
 
 Or the pgweb UI:
 
 http://127.0.0.1:9000
-
-## Severity
-
-The observations and changes receive a severity level to highlight / rank suspicious values.
-Here is a guideline for which level to use:
-
-- `critical` - Urgent issue which is definitely bad and needs immediate attention.
-- `high` - Severe issue with real impact and little to no doubt that it's a real issue.
-- `medium` - Something which could be bad, but the impact or certainty is limited.
-- `low` - Security issues which are not generally exploitable, but could be under certain circumstances.
-- `recommendation` - Recommendations which should be fixed, but not directly exploitable.
-- `notice` - Notice about a value or change which is noteworthy / doesn't happen often, but needs to be reviewed by a human to understand the impact.
-- `unknown` - The module has tried to assess the severity, but it is unknown - likely the module needs to be updated.
-- `none` - The value / change is determined to not be an issue at all and should be hidden from views highlighting issues / improvements.
-- _Empty string_ - The severity has not been assessed at all, not sent to module yet or no response received back.
 
 ## License
 
