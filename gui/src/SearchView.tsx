@@ -5,8 +5,11 @@ interface SearchResult {
   type: string;
   resource: string;
   module: string;
-  attribute: string;
-  value: string;
+  attribute?: string;
+  value?: string;
+  source?: string;
+  first_seen: string;
+  last_seen: string;
 }
 
 const SearchView = () => {
@@ -62,8 +65,7 @@ const SearchView = () => {
                 <TableCell>Type</TableCell>
                 <TableCell>Resource</TableCell>
                 <TableCell>Module</TableCell>
-                <TableCell>Attribute</TableCell>
-                <TableCell>Value</TableCell>
+                <TableCell>Details</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -72,8 +74,28 @@ const SearchView = () => {
                   <TableCell>{result.type}</TableCell>
                   <TableCell>{result.resource}</TableCell>
                   <TableCell>{result.module}</TableCell>
-                  <TableCell>{result.attribute}</TableCell>
-                  <TableCell>{result.value}</TableCell>
+                  <TableCell>
+                    {result.type === "observation" && result.attribute && (
+                      <>
+                        <strong>attribute:</strong> {result.attribute}
+                        <br />
+                        <strong>value:</strong> {result.value}
+                        <br />
+                        <strong>First seen:</strong> {result.first_seen}
+                        <br />
+                        <strong>Last seen:</strong> {result.last_seen}
+                      </>
+                    )}
+                    {result.type === "resource" && (
+                      <>
+                        <strong>Source:</strong> {result.source}
+                        <br />
+                        <strong>First seen:</strong> {result.first_seen}
+                        <br />
+                        <strong>Last seen:</strong> {result.last_seen}
+                      </>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
