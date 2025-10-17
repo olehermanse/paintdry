@@ -1,7 +1,7 @@
 import sys
 import json
 
-from flask import Flask, abort, current_app, send_from_directory
+from flask import Flask, abort, current_app, send_from_directory, request
 from flask.helpers import redirect
 
 from secdb.database import Database
@@ -68,6 +68,23 @@ def api_get_changes(id):
     if not result:
         abort(404)
     return result[0]
+
+
+@app.route("/api/search", methods=["POST"])
+def api_search():
+    search_string = request.json.get("search", "")
+    return {
+        "query": search_string,
+        "results": [
+            {
+                "type": "observation",
+                "resource": "http://cfengine.com/",
+                "module": "http",
+                "attribute": "status_code",
+                "value": "301",
+            }
+        ],
+    }
 
 
 @app.route("/")
