@@ -10,11 +10,14 @@ function columns(fields: string[]) {
     const o: GridColDef = {
       field: field,
       headerName: field,
+      flex: 1 // fixes the issue :upside_down_face: grow to fill space
     };
     if (field === "id") {
       o.maxWidth = 80;
+      o.flex = 0; // stick to 80
     } else if (field === "module") {
       o.maxWidth = 100;
+      o.flex = 0; // stick to 100, do not grow
     }
     c.push(o);
   }
