@@ -357,7 +357,6 @@ _get_cache: dict[str, Response] = {}
 
 def cached_http_get(url: str):
     print("GET " + url)
-    global _get_cache
     if url in _get_cache:
         return _get_cache[url]
     r = Response(requests.get(url, allow_redirects=False))

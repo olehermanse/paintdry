@@ -66,7 +66,7 @@ class Module:
         assert not '"' in name
         assert not "\n" in name
         module_folder = f"/paintdry/mount-state/modules/{name}"
-        cache_folder = f"/paintdry/mount-state/"
+        cache_folder = "/paintdry/mount-state/"
         input_folder = f"{module_folder}/requests"
         output_folder = f"{module_folder}/responses"
         pathlib.Path(input_folder).mkdir(parents=True, exist_ok=True)
@@ -207,6 +207,7 @@ class Updater:
             per_module[request.module].append(request)
         for module, arr in per_module.items():
             module = self.get_module(module)
+            assert module is not None
             module.send_requests(arr)
             module.start()
 
@@ -297,7 +298,6 @@ class Updater:
         self._process(entry.resource, entry.module)
 
     def process_config_target(self, target: ConfigTarget):
-        resource = Resource.from_target(target)
         module = self.get_module(target.module)
         assert module is not None
         request = ModuleRequest(

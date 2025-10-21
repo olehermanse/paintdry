@@ -106,9 +106,10 @@ def http_get(url: str):
     while True:
         try:
             r = requests.get(url, allow_redirects=False)
-            if r.from_cache:
+            # from_cache is a special thing added by requests-cache, not a part of the normal Response type
+            if getattr(r, "from_cache", False):
                 print("CACHE HIT: " + url)
-            if not r.from_cache:
+            else:
                 # Real HTTP request made, throttle to be nice,
                 # reducing network load and avoiding rate limits:
                 sleep(0.2)

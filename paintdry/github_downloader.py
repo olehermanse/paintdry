@@ -11,7 +11,6 @@ token = None
 
 
 def github_get(url):
-    global token
     print("GET: " + url)
     r = requests.get(
         url,
@@ -20,9 +19,9 @@ def github_get(url):
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
-    if r.from_cache:
+    if getattr(r, "from_cache", False):
         print("CACHE HIT: " + url)
-    if not r.from_cache:
+    else:
         sleep(0.2)
         if r.status_code != 200:
             print(str(r.text))
@@ -69,19 +68,16 @@ def mkdir(path):
 
 
 def cmd(cmd):
-    global token
     print("CMD: " + cmd.replace(token, "TOKEN"))
     os.system(cmd)
 
 
 def cmd_exitcode(cmd):
-    global token
     print("CMD: " + cmd.replace(token, "TOKEN"))
     return os.system(cmd)
 
 
 def cmd_stdout(cmd):
-    global token
     print("CMD: " + cmd.replace(token, "TOKEN"))
     return subprocess.check_output(cmd, shell=True)
 
