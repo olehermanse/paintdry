@@ -318,115 +318,75 @@ class Database:
             }
 
         search_pattern = f"%{search_string}%"
-        all_results = []
-
-        # Search resources
-        resource_rows = self._query(
-            """
-            SELECT id, resource, module, source, first_seen, last_seen
-            FROM resources
-            WHERE resource LIKE %s
-               OR module LIKE %s
-               OR source LIKE %s;
-            """,
-            (search_pattern, search_pattern, search_pattern),
-        )
-
-        for row in resource_rows:
-            all_results.append(
-                {
-                    "type": "resource",
-                    "id": str(row[0]),
-                    "resource": row[1],
-                    "module": row[2],
-                    "source": row[3],
-                    "first_seen": row[4].isoformat() if row[4] else None,
-                    "last_seen": row[5].isoformat() if row[5] else None,
-                }
-            )
-
-        # Search observations
-        observation_rows = self._query(
-            """
-            SELECT id, resource, module, attribute, value, first_seen, last_seen, severity
-            FROM observations
-            WHERE resource LIKE %s
-               OR module LIKE %s
-               OR attribute LIKE %s
-               OR value LIKE %s;
-            """,
-            (search_pattern, search_pattern, search_pattern, search_pattern),
-        )
-
-        for row in observation_rows:
-            result = {
-                "type": "observation",
-                "id": str(row[0]),
-                "resource": row[1],
-                "module": row[2],
-                "attribute": row[3],
-                "value": row[4],
-                "first_seen": row[5].isoformat() if row[5] else None,
-                "last_seen": row[6].isoformat() if row[6] else None,
-            }
-            if row[7]:  # severity
-                result["severity"] = row[7]
-            all_results.append(result)
-
-        # Search changes
-        change_rows = self._query(
-            """
-            SELECT id, resource, module, attribute, old_value, new_value, timestamp, severity
-            FROM changes
-            WHERE resource LIKE %s
-               OR module LIKE %s
-               OR attribute LIKE %s
-               OR old_value LIKE %s
-               OR new_value LIKE %s;
-            """,
-            (
-                search_pattern,
-                search_pattern,
-                search_pattern,
-                search_pattern,
-                search_pattern,
-            ),
-        )
-
-        for row in change_rows:
-            result = {
-                "type": "change",
-                "id": str(row[0]),
-                "resource": row[1],
-                "module": row[2],
-                "attribute": row[3],
-                "old_value": row[4],
-                "new_value": row[5],
-                "timestamp": row[6].isoformat() if row[6] else None,
-            }
-            if row[7]:
-                result["severity"] = row[7]
-            all_results.append(result)
-
-        # Calculate pagination
-        per_page = 50
-        total_results = len(all_results)
-        total_pages = (total_results + per_page - 1) // per_page  # Ceiling division
-
-        # Ensure page is within valid range
         if page < 1:
             page = 1
-        elif page > total_pages and total_pages > 0:
-            page = total_pages
+        per_page = 50
+        offset = (page - 1) * per_page
 
-        # Calculate slice indices
-        start_idx = (page - 1) * per_page
-        end_idx = start_idx + per_page
-        paginated_results = all_results[start_idx:end_idx]
+        # Search resources
+        raw_results = self._query(
+            """
+            SELECT resource, attribute, type, module, expanded_data, id
+            FROM (
+                SELECT 'resource' AS type, id, resource, module, NULL AS attribute,
+                    json_build_object(
+                        'first_seen', first_seen,
+                        'last_seen', last_seen,
+                        'source', source)
+                    AS expanded_data
+                FROM resources
+                UNION ALL
+                SELECT 'observation' AS type, id, resource, module, attribute,
+                    json_build_object(
+                        'first_seen', first_seen,
+                        'last_seen', last_seen,
+                        'value', value,
+                        'severity', severity)
+                    AS expanded_data
+                FROM observations
+                UNION ALL
+                SELECT 'change' AS type, id, resource, module, attribute,
+                    json_build_object(
+                        'timestamp', timestamp,
+                        'old_value', old_value,
+                        'new_value', new_value,
+                        'severity', severity)
+                    AS expanded_data
+                FROM changes
+            ) AS all_results
+            WHERE resource LIKE %s
+                  OR attribute LIKE %s
+                  OR id::VARCHAR LIKE %s
+                  OR type LIKE %s
+                  OR expanded_data::VARCHAR LIKE %s
+            ORDER BY resource, attribute, type, module, id
+            LIMIT %s OFFSET %s;
+            """,
+            5 * (search_pattern, ) + (per_page, offset),
+        )
+
+        all_results = []
+        for row in raw_results:
+            # resource, attribute, type, module, expanded_data, id
+            result = {
+                "resource": row[0],
+                "attribute": row[1],
+                "type": row[2],
+                "module": row[3],
+                "id": row[5],
+            }
+            # Extract the rest optional fields inside expanded_data:
+            # (timestamp, last_seen, first_seen, value, severity)
+            for key, value in row[4].items():
+                result[key] = value
+            all_results.append(result)
+
+        total_results = 1000
+        total_pages = 1 + total_results // per_page
 
         return {
             "query": search_string,
-            "results": paginated_results,
+            "results": all_results,
             "page": page,
             "per_page": per_page,
             "total_results": total_results,
