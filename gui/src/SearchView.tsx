@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 
 interface SearchResult {
+  id: string;
   type: string;
   resource: string;
   module: string;
@@ -127,6 +128,8 @@ const SearchView = () => {
                           <strong>First seen:</strong> {result.first_seen}
                           <br />
                           <strong>Last seen:</strong> {result.last_seen}
+                          <br />
+                          <strong>ID:</strong> {result.id}
                         </>
                       )}
                       {result.type === "change" && result.attribute && (
@@ -143,16 +146,24 @@ const SearchView = () => {
                               <br />
                             </>
                           )}
-                          <strong>timestamp:</strong> {result.timestamp}
+                          <strong>Timestamp:</strong> {result.timestamp}
+                          <br />
+                          <strong>ID:</strong> {result.id}
                         </>
                       )}
                       {result.type === "resource" && (
                         <>
-                          <strong>Source:</strong> {result.source}
-                          <br />
+                          {result.source && (
+                            <>
+                              <strong>Source:</strong> {result.source}
+                              <br />
+                            </>
+                          )}
                           <strong>First seen:</strong> {result.first_seen}
                           <br />
                           <strong>Last seen:</strong> {result.last_seen}
+                          <br />
+                          <strong>ID:</strong> {result.id}
                         </>
                       )}
                     </TableCell>

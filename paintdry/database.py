@@ -326,8 +326,7 @@ class Database:
         # Search resources
         raw_results = self._query(
             """
-            SELECT resource, attribute, type, module, expanded_data, id
-            FROM (
+            WITH all_results AS (
                 SELECT 'resource' AS type, id, resource, module, NULL AS attribute,
                     json_build_object(
                         'first_seen', first_seen,
@@ -353,40 +352,46 @@ class Database:
                         'severity', severity)
                     AS expanded_data
                 FROM changes
-            ) AS all_results
-            WHERE resource LIKE %s
-                  OR attribute LIKE %s
-                  OR id::VARCHAR LIKE %s
-                  OR type LIKE %s
-                  OR expanded_data::VARCHAR LIKE %s
+            ),
+            filtered_results AS (
+                SELECT *, COUNT(*) OVER() AS total_count
+                FROM all_results
+                WHERE resource LIKE %s
+                      OR attribute LIKE %s
+                      OR id::VARCHAR LIKE %s
+                      OR type LIKE %s
+                      OR expanded_data::VARCHAR LIKE %s
+            )
+            SELECT total_count, id, resource, attribute, type, module, expanded_data
+            FROM filtered_results
             ORDER BY resource, attribute, type, module, id
             LIMIT %s OFFSET %s;
             """,
             5 * (search_pattern, ) + (per_page, offset),
         )
 
-        all_results = []
+        results = []
+        total_results = 0
         for row in raw_results:
-            # resource, attribute, type, module, expanded_data, id
+            total_results = row[0]
             result = {
-                "resource": row[0],
-                "attribute": row[1],
-                "type": row[2],
-                "module": row[3],
-                "id": row[5],
+                "id": row[1],
+                "resource": row[2],
+                "attribute": row[3],
+                "type": row[4],
+                "module": row[5],
             }
             # Extract the rest optional fields inside expanded_data:
             # (timestamp, last_seen, first_seen, value, severity)
-            for key, value in row[4].items():
+            for key, value in row[6].items():
                 result[key] = value
-            all_results.append(result)
+            results.append(result)
 
-        total_results = 1000
         total_pages = 1 + total_results // per_page
 
         return {
             "query": search_string,
-            "results": all_results,
+            "results": results,
             "page": page,
             "per_page": per_page,
             "total_results": total_results,
