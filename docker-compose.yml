@@ -1,14 +1,15 @@
 services:
   postgres:
-    image: postgres
+    hostname: postgres
+    image: docker.io/postgres
     volumes:
-      - ./mount-data:/var/lib/postgresql/data
+      - ./mount-data:/var/lib/postgresql
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
   pgweb:
-    image: sosedoff/pgweb
+    image: docker.io/sosedoff/pgweb
     command: pgweb --debug --url=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable --listen=9000 --open-retry=10
     ports:
       - "9000:9000"
