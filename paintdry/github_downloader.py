@@ -201,6 +201,10 @@ def main():
                 else:
                     cmd(pull_cmd)
                     sleep(1)
+
+                if not os.path.exists(default_branch_path):
+                    # TODO handle empty repos
+                    continue
                 if (
                     cmd_stdout(
                         f"sh -c 'cd {default_branch_path} && git rev-parse --is-shallow-repository'"
@@ -210,9 +214,10 @@ def main():
                     cmd(unshallow_cmd)
                     sleep(2)
 
-                if trusted_path:
-                    glrp_cmd = f"sh -c 'cd {default_branch_path} && glrp --trusted {trusted_path} --compare 5d && mv .before.json ../../ && mv .after.json ../../'"
-                    cmd(glrp_cmd)
+                # TODO GLRP:
+                # if trusted_path:
+                #     glrp_cmd = f"sh -c 'cd {default_branch_path} && glrp --trusted {trusted_path} --compare 5d && mv .before.json ../../ && mv .after.json ../../'"
+                #     cmd(glrp_cmd)
                 now = datetime.now()
                 with open(ts_path, "w") as f:
                     f.write(now.isoformat() + "\n")

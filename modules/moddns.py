@@ -19,14 +19,14 @@ class ModDNS(ModBase):
         return [
             {
                 "operation": "discovery",
-                "resource": "cfengine.com",
+                "resource": "example.com",
                 "module": "dns",
                 "source": "config.json",
                 "timestamp": 1730241747,
             },
             {
                 "operation": "observation",
-                "resource": "cfengine.com",
+                "resource": "example.com",
                 "module": "dns",
                 "timestamp": 1730241747,
             },
