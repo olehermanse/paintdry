@@ -137,6 +137,9 @@ class ModGitHub(ModBase):
                     "severity": "none",
                 }
             ]
+        # TODO: This is likely because of the empty repos and should be handled elsewhere
+        if not os.path.exists(folder + "/updated"):
+            return []
         with open(folder + "/updated", "r") as f:
             ts = datetime.datetime.fromisoformat(f.read().strip())
             timestamp = int(ts.timestamp())
