@@ -3,6 +3,10 @@
     {
       "modules": ["http", "dns", "tls"],
       "resources": ["https://example.com"]
+    },
+    {
+      "modules": ["simplechecksums"],
+      "resources": ["https://github.com/gohugoio/hugo/releases/download/v0.155.2/hugo_0.155.2_checksums.txt"]
     }
   ],
   "modules": {
