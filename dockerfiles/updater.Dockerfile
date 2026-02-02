@@ -1,4 +1,4 @@
-FROM docker.io/fedora:42@sha256:a3b2ef70370a9f3243883549f3a3f1733fc2665d471228c39b65d43e24e689c7
+FROM docker.io/fedora:42@sha256:b3d16134560afa00d7cc2a9e4967eb5b954512805f3fe27d8e70bbed078e22ea
 # RUN apk update && apk upgrade
 # RUN apk add --no-cache bash git openssh npm python3 py3-pip curl libpq-dev postgresql-client
 RUN yum update -y
