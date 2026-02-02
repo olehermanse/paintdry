@@ -13,6 +13,9 @@
     "dns": {
       "command": "python3 /paintdry/modules/moddns.py"
     },
+    "simplechecksums": {
+      "command": "python3 /paintdry/modules/modsimplechecksums.py"
+    },
     "http": {
       "command": "python3 /paintdry/modules/modhttp.py"
     },
