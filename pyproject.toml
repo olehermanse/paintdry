@@ -1,0 +1,20 @@
+[project]
+name = "paintdry"
+version = "0.1.0"
+description = "Security-focused monitoring application for detecting unexpected changes"
+requires-python = ">=3.10"
+dependencies = [
+    "Flask>=3.1.2",
+    "psycopg2-binary>=2.9.11",
+    "requests>=2.32.5",
+    "requests-cache>=1.2.1",
+    "cryptography>=46.0.4",
+    "glrp>=0.3.3",
+]
+
+[project.scripts]
+paintdry = "paintdry.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
