@@ -360,6 +360,7 @@ class Database:
                       OR attribute LIKE %s
                       OR id::VARCHAR LIKE %s
                       OR type LIKE %s
+                      OR module LIKE %s
                       OR expanded_data::VARCHAR LIKE %s
             )
             SELECT total_count, id, resource, attribute, type, module, expanded_data
@@ -367,7 +368,7 @@ class Database:
             ORDER BY resource, attribute, type, module, id
             LIMIT %s OFFSET %s;
             """,
-            5 * (search_pattern, ) + (per_page, offset),
+            6 * (search_pattern, ) + (per_page, offset),
         )
 
         results = []
