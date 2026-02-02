@@ -14,9 +14,12 @@
   font-family: monospace;
 }
 
+code {
+  font-family: monospace;
+}
+
 :not(pre) > code {
   background: #dddddd;
   padding: 4px;
   border-radius: 4px;
-  font-family: monospace;
 }
