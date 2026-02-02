@@ -17,6 +17,7 @@ from paintdry.lib import (
     Resource,
     ConfigTarget,
     Change,
+    get_config_filename,
 )
 
 
@@ -213,7 +214,7 @@ class Updater:
 
     def get_module(self, name: str) -> Module | None:
         if not name in self.modules:
-            config = JsonFile("config/config.json")
+            config = JsonFile(get_config_filename())
             if name not in config["modules"]:
                 print(f"Warning: Module '{name}' missing")
                 return None
@@ -361,7 +362,7 @@ class Updater:
         clear_get_cache()
 
         # Read config
-        config = JsonFile("config/config.json")
+        config = JsonFile(get_config_filename())
 
         # Setup state
         state = ensure_folder("./state")

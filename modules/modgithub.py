@@ -1,11 +1,8 @@
 import datetime
 from functools import cache
-from modlib import ModBase, strip_prefix, now
+from modlib import ModBase, strip_prefix, now, TAG_REGEX
 import os
 import json
-import re
-
-TAG_REGEX = re.compile(r"v?\d+\.\d+\.\d+(-\d+)?")
 
 @cache
 def normalize_resource(url: str) -> str:

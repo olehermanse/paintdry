@@ -4,6 +4,7 @@ from flask import Flask, abort, send_from_directory, request
 from flask.helpers import redirect
 
 from paintdry.database import Database
+from paintdry.lib import get_config_filename
 
 database = Database()
 
@@ -25,7 +26,7 @@ def api_get_resource(id):
 
 @app.route("/api/config")
 def api_config():
-    with open("./config/config.json", "r") as f:
+    with open(get_config_filename(), "r") as f:
         data = json.loads(f.read())
     return data
 

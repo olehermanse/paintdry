@@ -7,7 +7,9 @@ import datetime
 from urllib.parse import urlparse
 import requests_cache
 from datetime import timedelta
+import re
 
+TAG_REGEX = re.compile(r"v?\d+\.\d+\.\d+(-\d+)?")
 
 def now() -> int:
     return int(datetime.datetime.now().timestamp())

@@ -1,8 +1,14 @@
+import os
 import json
 import datetime
 from typing import Any
 
 import requests
+
+def get_config_filename():
+    if os.path.isfile("./config/config-override.json"):
+        return "./config/config-override.json"
+    return "./config/config.json"
 
 
 class ModuleRequest(dict):
