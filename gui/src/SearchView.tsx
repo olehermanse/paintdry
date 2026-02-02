@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   TextField,
@@ -30,11 +31,24 @@ interface SearchResult {
 }
 
 const SearchView = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalResults, setTotalResults] = useState(0);
+
+  const handleRowClick = (result: SearchResult) => {
+    const typeToRoute: Record<string, string> = {
+      resource: "/ui/resources",
+      observation: "/ui/observations",
+      change: "/ui/changes",
+    };
+    const route = typeToRoute[result.type];
+    if (route && result.id) {
+      navigate(`${route}/${result.id}`);
+    }
+  };
 
   const handleSearch = async (value: string, pageNum: number = 1) => {
     setSearchTerm(value);
@@ -108,7 +122,11 @@ const SearchView = () => {
               </TableHead>
               <TableBody>
                 {searchResults.map((result, index) => (
-                  <TableRow key={index}>
+                  <TableRow
+                    key={index}
+                    onClick={() => handleRowClick(result)}
+                    sx={{ cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                  >
                     <TableCell>{result.type}</TableCell>
                     <TableCell>{result.resource}</TableCell>
                     <TableCell>{result.module}</TableCell>
