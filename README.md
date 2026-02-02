@@ -1,5 +1,7 @@
 # paintdry - Watch things not change
 
+![](logo.svg)
+
 This project is a security oriented tool for "monitoring" things you don't expect to change.
 When they do change, this is somewhwat rare / unexpected, and worthy of some kind of alert.
 Other monitoring tools focus on trends and graphs and spikes and outliers, this one focuses on all the security-relevant information we can gather and store, which typically stays constant.
