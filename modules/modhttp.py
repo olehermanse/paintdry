@@ -231,6 +231,22 @@ class ModHTTP(ModBase):
                     "severity": "none",
                 }
             )
+        assume_html = not url.endswith((".txt", ".json", ".css", ".csv", ".js"))
+        # Count script tags for non-redirect responses
+        if status_code in (200, 201) and assume_html:
+            script_tag_count = r.body.lower().count("<script")
+            observations.append(
+                {
+                    "operation": request["operation"],
+                    "resource": url,
+                    "module": "http",
+                    "attribute": "js_script_tags",
+                    "value": script_tag_count,
+                    "timestamp": r.timestamp,
+                    "severity": "none",
+                }
+            )
+
         return observations
 
     def change(self, request):
