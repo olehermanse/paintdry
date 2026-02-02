@@ -3,7 +3,9 @@ from functools import cache
 from modlib import ModBase, strip_prefix, now
 import os
 import json
+import re
 
+TAG_REGEX = re.compile(r"v?\d+\.\d+\.\d+(-\d+)?")
 
 @cache
 def normalize_resource(url: str) -> str:
@@ -223,6 +225,25 @@ class ModGitHub(ModBase):
                     "severity": severity,
                 }
             )
+
+        tag_data = folder + "/tags.json"
+        if os.path.isfile(tag_data):
+            with open(tag_data, "r") as f:
+                tag_data = json.loads(f.read())
+                for tag, sha in tag_data.items():
+                    if not TAG_REGEX.fullmatch(tag):
+                        continue
+                    observations.append(
+                        {
+                            "operation": "observation",
+                            "resource": repo,
+                            "module": "github",
+                            "attribute": "tag:" + tag,
+                            "value": sha,
+                            "timestamp": now(),
+                            "severity": "none",
+                        }
+                )
 
         return observations
 

@@ -77,8 +77,13 @@ def cmd_exitcode(cmd):
     return os.system(cmd)
 
 
-def cmd_stdout(cmd):
+def cmd_stdout(cmd, fail_ok=False):
     print("CMD: " + cmd.replace(token, "TOKEN"))
+    if fail_ok:
+        try:
+            return subprocess.check_output(cmd, shell=True)
+        except:
+            return b""
     return subprocess.check_output(cmd, shell=True)
 
 
@@ -213,6 +218,29 @@ def main():
                 ):
                     cmd(unshallow_cmd)
                     sleep(2)
+                tags = cmd_stdout(
+                    f"sh -c 'cd {default_branch_path} && git show-ref --tags'", fail_ok=True
+                ).decode("utf-8")
+
+                if tags:
+                    tag_data = {}
+                    sha_length = len("d9028fceac74241e743fc4d1d832cb4662e976eb")
+                    separator = " refs/tags/"
+                    expected_length = sha_length + len(separator) + 1
+                    for line in tags.split("\n"):
+                        line = line.strip()
+                        if not line or len(line) < expected_length:
+                            continue
+                        if not line[sha_length:].startswith(separator):
+                            continue
+                        tag = line[expected_length - 1:]
+                        sha = line[0:sha_length]
+                        tag_data[tag] = sha
+
+                    if tag_data:
+                        path = os.path.join(root, website, org, reponame, "tags.json")
+                        with open(path, "w") as f:
+                            f.write(json.dumps(tag_data, indent=2))
 
                 # TODO GLRP:
                 # if trusted_path:
