@@ -22,4 +22,5 @@ while true; do
   psql -c "SELECT * FROM changes LIMIT 5;"
   python3 -m paintdry update-once
   sleep 60
+  echo "Updater waking up"
 done

@@ -7,6 +7,7 @@ RUN yum install -y openssl gcc
 RUN yum install -y python3 python3-devel
 RUN yum install -y postgresql libpq-devel
 RUN yum install -y nodejs npm
+RUN yum install -y skopeo
 RUN npm install --global prettier
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
