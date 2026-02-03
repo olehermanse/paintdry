@@ -1,4 +1,46 @@
+---
+header: 'paintdry - cfgmgmtcamp 2026'
+footer: '![image](./Northern-tech-logo-small.png)'
+---
+
+<style>
+section {
+  padding: 50px;
+}
+
+header {
+    position: absolute;
+    left: 50px;
+    right: 50px;
+    height: 20px;
+  top: 10px;
+}
+
+footer {
+    position: absolute;
+    right: 50px;
+    left: 1000px;
+    height: 20px;
+    bottom: 40px;
+}
+
+footer > img {
+    height: 60px;
+}
+
+section > p > img {
+    width:  1150px;
+}
+
+footer.image_slide {
+    display: none;
+}
+
+</style>
+
 # Watch paint dry - Monitoring what doesn't change
+
+Ole Herman Schumacher Elgesem, Northern.tech
 
 ---
 
@@ -17,7 +59,9 @@
 
 ## whoami
 
-[github.com/olehermanse](https://github.com/olehermanse)
+- Ole Herman Schumacher Elgesem
+- Northern.tech, the company which makes CFEngine and Mender
+- [github.com/olehermanse](https://github.com/olehermanse)
 
 ---
 
@@ -48,8 +92,8 @@ Can sneakily add files to existing release, or move tags.
 
 ## Idea 2.5
 
-Other things are similar ("constant / immutable by convention").
-Tags on Docker Hub, release artifacts (downloads) on our website.
+Other things are similar - constant, rarely change, or immutable by convention.
+Tags on Docker Hub, release artifacts (downloads) on our website, etc.
 
 We don't expect these to change - when they do, it's noteworthy.
 
@@ -62,7 +106,33 @@ Alerting and good tracking of changes.
 
 ---
 
-## Flexible
+## Risk assessments
+
+- Probable risks
+- Impact
+- Mitigation effort
+
+- -> Prioritize
+
+---
+
+## Today's goal
+
+- You think this is an interesting idea
+- You want to implement something similar in your work
+- You want to collaborate on the paintdry implementation
+
+---
+
+## AKA
+
+---
+
+This is not ready, please don't run it in production.
+
+---
+
+## Implementation goals
 
 Configuring it to track the things you want should be easy.
 
@@ -77,26 +147,19 @@ Implementing new modules should be straightforward.
 
 ---
 
-## Architecture - polling
+## Architecture - containers
 
 - PostgreSQL database
 - updater:
-  - Run modules, based on config, put data into database
+  - Run modules, put data into database
 - downloader:
-  - Currently used for git / github module.
-  - Since downloading everything from GitHub is a bit slow.
+  - Slow downloads
+- pgweb - Open source PG UI
+- server / paintdry-gui - Custom react UI & Flask API
 
 ---
 
-## Architecture 
-
-- Simple backend / API
-  - Implements a few HTTP REST APIs (read-only - search / list / get).
-- pgweb - Open source PG UI
-  - General purpose UI for looking at tables and running queries
-- paintdry-gui - Custom react UI
-  - Most useful part is a search bar
-  - Uses search API which searches across tables
+## A word on rate limiting
 
 ---
 
@@ -299,16 +362,6 @@ if __name__ == "__main__":
 ### Future modules
 
 - "Suspicious" git commits
-  - Need to define what is suspicious. Could be a combination of:
-    - Trusted GPG keys
-    - Diffs
-    - Email, name, lookalikes?
-
----
-
-### Future modules
-
-- "Suspicious" commits
   - Need to define what is suspicious. Could be a combination of:
     - Trusted GPG keys
     - Diffs
