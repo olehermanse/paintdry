@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 from time import sleep
 from functools import cache
@@ -139,6 +140,28 @@ def process_html(request: dict, url: str, r: Response) -> list[dict]:
             "severity": "none",
         }
     )
+
+    # Extract all http/https URLs and get unique sorted hostnames
+    url_pattern = re.compile(r'https?://[^\s<>"\']+')
+    found_urls = url_pattern.findall(r.body)
+    hostnames = set()
+    for found_url in found_urls:
+        hostname = url_to_hostname(found_url)
+        if hostname:
+            hostnames.add(hostname)
+    external_domains = sorted(hostnames)
+    observations.append(
+        {
+            "operation": request["operation"],
+            "resource": url,
+            "module": "http",
+            "attribute": "external_domains",
+            "value": external_domains,
+            "timestamp": r.timestamp,
+            "severity": "none",
+        }
+    )
+
     return observations
 
 
