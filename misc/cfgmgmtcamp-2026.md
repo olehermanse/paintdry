@@ -2,6 +2,10 @@
 
 ---
 
+![]()
+
+---
+
 ## Outline
 
 1. whoami
@@ -245,22 +249,13 @@ if __name__ == "__main__":
 ### Git
 
 - Tag -> commit SHA
-- "Suspicious" commits
-  - Need to define what is suspicious. Could be a combination of:
-    - Trusted GPG keys
-    - Diffs
-    - Email, name, lookalikes?
 
 ### GitHub
 
 - Whether a repo is public or private.
-- New repos? Deleted repos?
-
---- 
-
-### Docker
-
-- Docker tag -> digest
+- All repos (list)
+- Whether a repo is archived
+- Security relevant settings (for example rulesets).
 
 ---
 
@@ -268,32 +263,70 @@ if __name__ == "__main__":
 
 - List of external domains linked to
 - Number of script tags
-- Do this recursively for the whole website
-- Find all redirects - alert on changed redirects
+- Security relevant HTTP headers (CSP)
 
 ---
 
 ### Files / downloads
 
 - Stated checksum
-- Actual checksum
-- Changes in checksum.txt file
-  - New artifact added to existing release?
+- `simplechecksums`
+  - Using `sh256sum` `checksums.txt` files
+- `cfechecksums`
+  - Parses the more custom JSON files we use on cfengine.com
 
 ---
 
 ## Next steps
 
 - Make the repo public
-- Production ready
-  - OAuth proxy?
-  - Database password
-  - Stricter separation / more advanced proxy?
-    - Can store secrets in proxy and make it harder for themm to leak.
+- Auth (OAuth proxy?), db password, stricter separation
+- Better module scheduling
+- Better HTTP proxying / caching
+  - Could "isolate" secrets to prevent leaking
+  - Better implement caching and rate limiting
+- Make UI nicer, more useful
 
 ---
 
 ## Next steps
 
-- More modules
+- Future modules
   - Any ideas?
+
+---
+
+### Future modules
+
+- "Suspicious" git commits
+  - Need to define what is suspicious. Could be a combination of:
+    - Trusted GPG keys
+    - Diffs
+    - Email, name, lookalikes?
+
+---
+
+### Future modules
+
+- "Suspicious" commits
+  - Need to define what is suspicious. Could be a combination of:
+    - Trusted GPG keys
+    - Diffs
+    - Email, name, lookalikes?
+
+---
+
+### Future modules
+
+- Actual checksum
+- Changes in checksum.txt file
+  - New artifact added to existing release?
+- Crawl websites recursively
+  - Do this recursively for the whole website
+  - Find all redirects - alert on changed redirects
+
+---
+
+### Future modules
+
+- Docker tag -> digest

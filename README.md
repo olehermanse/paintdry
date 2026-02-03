@@ -1,6 +1,6 @@
 # paintdry - Watch things not change
 
-![](logo.svg)
+![](./misc/paintdry-robot.svg)
 
 This project is a security oriented tool for "monitoring" things you don't expect to change.
 When they do change, this is somewhwat rare / unexpected, and worthy of some kind of alert.
