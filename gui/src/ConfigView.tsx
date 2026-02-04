@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type {} from "@mui/x-data-grid/themeAugmentation";
+import CodeBlock from "./CodeBlock";
 
 async function fetch_table_data() {
   const response = await fetch("/api/config");
@@ -22,9 +23,7 @@ function ConfigView() {
         <code>config/secrets.json</code>, but we don't want to expose that, for
         obvious reasons.{" "}
       </p>
-      <pre className="code-block">
-        <code>{JSON.stringify(rawData, null, 2)}</code>
-      </pre>
+      <CodeBlock code={JSON.stringify(rawData, null, 2)} />
     </>
   );
 }

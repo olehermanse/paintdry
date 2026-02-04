@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 import { Button } from "@mui/material";
+import CodeBlock from "./CodeBlock";
 
 interface Resource {
   first_seen: string | null;
@@ -32,9 +33,7 @@ function SingleJsonView({ api }: { api: string }) {
   }, [api, id]);
   return (
     <>
-      <pre className="code-block">
-        <code>{JSON.stringify(rawData, null, 2)}</code>
-      </pre>
+      <CodeBlock code={JSON.stringify(rawData, null, 2)} />
       <Button
         fullWidth
         variant="outlined"
