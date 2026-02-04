@@ -75,6 +75,15 @@ class ModSimpleChecksums(ModBase):
                 "timestamp": now(),
                 "severity": "none",
             }
+        yield {
+            "operation": "observation",
+            "resource": url,
+            "module": "simplechecksums",
+            "attribute": "all_artifacts",
+            "value": sorted(checksums.keys()),
+            "timestamp": now(),
+            "severity": "none",
+        }
 
     def change(self, request) -> Iterable[dict]:
         assert request["new_value"] != request["old_value"]
