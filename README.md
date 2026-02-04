@@ -143,8 +143,7 @@ It could for example look like this, if you're interested in monitoring Northern
       "command": "python3 /paintdry/modules/modtls.py"
     },
     "github": {
-      "command": "python3 /paintdry/modules/modgithub.py",
-      "slow": true
+      "command": "python3 /paintdry/modules/modgithub.py"
     }
   }
 }
