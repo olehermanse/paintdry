@@ -8,6 +8,7 @@ Each module handles specific types of resources (DNS lookups, HTTP checks, TLS c
 A minimal module looks like this:
 
 ```python
+from collections.abc import Iterable
 from modlib import ModBase
 
 class ModMyModule(ModBase):
@@ -28,17 +29,20 @@ class ModMyModule(ModBase):
             },
         ]
 
-    def discovery(self, request: dict) -> list[dict]:
-        # Return discovered resources
-        return []
+    def discovery(self, request: dict) -> Iterable[dict]:
+        # Yield discovered resources
+        return
+        yield
 
-    def observation(self, request: dict) -> list[dict]:
-        # Return observations about a resource
-        return []
+    def observation(self, request: dict) -> Iterable[dict]:
+        # Yield observations about a resource
+        return
+        yield
 
-    def change(self, request: dict) -> list[dict]:
+    def change(self, request: dict) -> Iterable[dict]:
         # Handle changes (old_value -> new_value)
-        return []
+        return
+        yield
 
 def main():
     module = ModMyModule()
@@ -69,39 +73,35 @@ Additional fields for specific operations:
 ### discovery
 
 Called to discover resources.
-Returns a list of discovery results confirming/expanding resources.
+Yields discovery results confirming/expanding resources.
 
 ```python
-def discovery(self, request: dict) -> list[dict]:
-    return [
-        {
-            "operation": "discovery",
-            "resource": request["resource"],
-            "module": "mymodule",
-            "source": request["source"],
-            "timestamp": request["timestamp"],
-        }
-    ]
+def discovery(self, request: dict) -> Iterable[dict]:
+    yield {
+        "operation": "discovery",
+        "resource": request["resource"],
+        "module": "mymodule",
+        "source": request["source"],
+        "timestamp": request["timestamp"],
+    }
 ```
 
 ### observation
 
 Called to observe/check a resource.
-Returns observations with attributes and severity.
+Yields observations with attributes and severity.
 
 ```python
-def observation(self, request: dict) -> list[dict]:
-    return [
-        {
-            "operation": request["operation"],
-            "resource": request["resource"],
-            "module": "mymodule",
-            "attribute": "some_attribute",
-            "value": "observed_value",
-            "timestamp": now(),
-            "severity": "none",  # none, notice, high, unknown
-        }
-    ]
+def observation(self, request: dict) -> Iterable[dict]:
+    yield {
+        "operation": "observation",
+        "resource": request["resource"],
+        "module": "mymodule",
+        "attribute": "some_attribute",
+        "value": "observed_value",
+        "timestamp": now(),
+        "severity": "none",  # none, notice, high, unknown
+    }
 ```
 
 ### change
@@ -112,10 +112,11 @@ Use `respond_with_severity()` helper to set severity.
 ```python
 from modlib import respond_with_severity
 
-def change(self, request):
+def change(self, request) -> Iterable[dict]:
     if request["new_value"] == "":
-        return respond_with_severity(request, "high")
-    return respond_with_severity(request, "notice")
+        yield from respond_with_severity(request, "high")
+        return
+    yield from respond_with_severity(request, "notice")
 ```
 
 ## Severity Levels
@@ -138,7 +139,7 @@ Import from `modlib`:
 - `now()` - Returns current Unix timestamp
 - `normalize_hostname(hostname)` - Strips `www.` prefix and extracts hostname from URLs
 - `normalize_url(url)` - Ensures URL has `https://` prefix and trailing slash
-- `respond_with_severity(request, severity)` - Helper for change responses
+- `respond_with_severity(request, severity)` - Generator helper for change responses (use with `yield from`)
 
 ## Running Modules
 

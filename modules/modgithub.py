@@ -1,11 +1,12 @@
 import datetime
 from functools import cache
+from collections.abc import Iterable
 from modlib import ModBase, strip_prefix, now, TAG_REGEX
 import os
 import json
 
 @cache
-def normalize_resource(url: str) -> str:
+def normalize_github(url: str) -> str:
     while url.endswith("/"):
         url = url[0:-1]
     url = strip_prefix("http://", url)
@@ -33,21 +34,19 @@ class ModGitHub(ModBase):
             },
         ]
 
-    def discover_repos(self, request):
-        org = normalize_resource(request["resource"])
+    def discover_repos(self, request) -> Iterable[dict]:
+        org = normalize_github(request["resource"])
         assert "/" not in org
         folder = f"mount-state/repos/github.com/{org}"
         if not os.path.exists(folder):
-            return []
-        discoveries = [
-            {
-                "operation": "discovery",
-                "resource": normalize_resource(request["resource"]),
-                "module": "github",
-                "source": request["source"],
-                "timestamp": request["timestamp"],
-            }
-        ]
+            return
+        yield {
+            "operation": "discovery",
+            "resource": normalize_github(request["resource"]),
+            "module": "github",
+            "source": request["source"],
+            "timestamp": request["timestamp"],
+        }
 
         for entry in os.scandir(folder):
             if not entry.is_dir():
@@ -55,97 +54,84 @@ class ModGitHub(ModBase):
             resource = org + "/" + entry.name
             if not os.path.exists(entry.path + "/metadata.json"):
                 continue
-            discoveries.append(
-                {
-                    "operation": "discovery",
-                    "resource": resource,
-                    "module": "github",
-                    "source": request["resource"],
-                    "timestamp": request["timestamp"],
-                }
-            )
-
-        return discoveries
-
-    def discovery(self, request: dict) -> list[dict]:
-        resource = normalize_resource(request["resource"])
-        if not "/" in resource:
-            return self.discover_repos(request)
-        return [
-            {
+            yield {
                 "operation": "discovery",
                 "resource": resource,
                 "module": "github",
-                "source": request["source"],
+                "source": request["resource"],
                 "timestamp": request["timestamp"],
             }
-        ]
 
-    def observation_org(self, request: dict) -> list[dict]:
-        org = normalize_resource(request["resource"])
+    def discovery(self, request: dict) -> Iterable[dict]:
+        resource = normalize_github(request["resource"])
+        if not "/" in resource:
+            yield from self.discover_repos(request)
+            return
+        yield {
+            "operation": "discovery",
+            "resource": resource,
+            "module": "github",
+            "source": request["source"],
+            "timestamp": request["timestamp"],
+        }
+
+    def observation_org(self, request: dict) -> Iterable[dict]:
+        org = normalize_github(request["resource"])
         folder = f"mount-state/repos/github.com/{org}"
         if not os.path.exists(folder):
-            return []
-        observations = []
-        observations.append(
-            {
-                "operation": request["operation"],
-                "resource": org,
-                "module": "github",
-                "attribute": "url",
-                "value": f"https://github.com/{org}",
-                "timestamp": now(),
-                "severity": "none",
-            }
-        )
+            return
+        yield {
+            "operation": "observation",
+            "resource": org,
+            "module": "github",
+            "attribute": "url",
+            "value": f"https://github.com/{org}",
+            "timestamp": now(),
+            "severity": "none",
+        }
 
         org_metadata = folder + "/org-metadata.json"
         if os.path.isfile(org_metadata):
             with open(org_metadata, "r") as f:
                 org_metadata = json.loads(f.read())
             if "repos" in org_metadata:
-                observations.append(
-                    {
-                        "operation": "observation",
-                        "resource": org,
-                        "module": "github",
-                        "attribute": "repos",
-                        "value": json.dumps(org_metadata["repos"]),
-                        "timestamp": now(),
-                        "severity": (
-                            "none" if len(org_metadata["repos"]) > 0 else "high"
-                        ),
-                    }
-                )
-        return observations
+                yield {
+                    "operation": "observation",
+                    "resource": org,
+                    "module": "github",
+                    "attribute": "repos",
+                    "value": json.dumps(org_metadata["repos"]),
+                    "timestamp": now(),
+                    "severity": (
+                        "none" if len(org_metadata["repos"]) > 0 else "high"
+                    ),
+                }
 
-    def observation_repo(self, request: dict) -> list[dict]:
-        repo = normalize_resource(request["resource"])
+    def observation_repo(self, request: dict) -> Iterable[dict]:
+        repo = normalize_github(request["resource"])
         folder = f"mount-state/repos/github.com/{repo}"
         if not os.path.exists(folder):
-            return []
+            return
         if os.path.exists(folder + "/archived"):
-            return [
-                {
-                    "operation": request["operation"],
-                    "resource": repo,
-                    "module": "github",
-                    "attribute": "archived",
-                    "value": True,
-                    "timestamp": now(),
-                    "severity": "none",
-                }
-            ]
+            yield {
+                "operation": "observation",
+                "resource": repo,
+                "module": "github",
+                "attribute": "archived",
+                "value": True,
+                "timestamp": now(),
+                "severity": "none",
+            }
+            return
         # TODO: This is likely because of the empty repos and should be handled elsewhere
         if not os.path.exists(folder + "/updated"):
-            return []
+            return
         with open(folder + "/updated", "r") as f:
             ts = datetime.datetime.fromisoformat(f.read().strip())
             timestamp = int(ts.timestamp())
         with open(folder + "/metadata.json", "r") as f:
             data = json.loads(f.read())
 
-        observations = []
         keys = {
             "html_url": "url",
             "description": "description",
@@ -157,29 +143,25 @@ class ModGitHub(ModBase):
         for key, name in keys.items():
             if key not in data:
                 continue
-            observations.append(
-                {
-                    "operation": request["operation"],
-                    "resource": repo,
-                    "module": "github",
-                    "attribute": name,
-                    "value": data.get(key, ""),
-                    "timestamp": timestamp,
-                    "severity": "none",
-                }
-            )
+            yield {
+                "operation": "observation",
+                "resource": repo,
+                "module": "github",
+                "attribute": name,
+                "value": data.get(key, ""),
+                "timestamp": timestamp,
+                "severity": "none",
+            }
         if "license" in data and data["license"]:
-            observations.append(
-                {
-                    "operation": request["operation"],
-                    "resource": repo,
-                    "module": "github",
-                    "attribute": "license",
-                    "value": data["license"]["name"],
-                    "timestamp": timestamp,
-                    "severity": "none",
-                }
-            )
+            yield {
+                "operation": request["operation"],
+                "resource": repo,
+                "module": "github",
+                "attribute": "license",
+                "value": data["license"]["name"],
+                "timestamp": timestamp,
+                "severity": "none",
+            }
         rulesets = "none"
         severity = "recommendation"
         if "rulesets" in data:
@@ -190,17 +172,15 @@ class ModGitHub(ModBase):
                 severity = "none"
             rulesets = sorted(rulesets)
             rulesets = json.dumps(rulesets)
-            observations.append(
-                {
-                    "operation": request["operation"],
-                    "resource": repo,
-                    "module": "github",
-                    "attribute": "rulesets",
-                    "value": rulesets,
-                    "timestamp": timestamp,
-                    "severity": severity,
-                }
-            )
+            yield {
+                "operation": request["operation"],
+                "resource": repo,
+                "module": "github",
+                "attribute": "rulesets",
+                "value": rulesets,
+                "timestamp": timestamp,
+                "severity": severity,
+            }
 
         for attribute, value in data.get("security_and_analysis", {}).items():
             status = value.get("status", "")
@@ -211,17 +191,15 @@ class ModGitHub(ModBase):
                 "secret_scanning_push_protection",
             ):
                 severity = "recommendation"
-            observations.append(
-                {
-                    "operation": request["operation"],
-                    "resource": repo,
-                    "module": "github",
-                    "attribute": attribute,
-                    "value": status,
-                    "timestamp": timestamp,
-                    "severity": severity,
-                }
-            )
+            yield {
+                "operation": request["operation"],
+                "resource": repo,
+                "module": "github",
+                "attribute": attribute,
+                "value": status,
+                "timestamp": timestamp,
+                "severity": severity,
+            }
 
         tag_data = folder + "/tags.json"
         if os.path.isfile(tag_data):
@@ -230,32 +208,29 @@ class ModGitHub(ModBase):
                 for tag, sha in tag_data.items():
                     if not TAG_REGEX.fullmatch(tag):
                         continue
-                    observations.append(
-                        {
-                            "operation": "observation",
-                            "resource": repo,
-                            "module": "github",
-                            "attribute": "tag:" + tag,
-                            "value": sha,
-                            "timestamp": now(),
-                            "severity": "none",
-                        }
-                )
+                    yield {
+                        "operation": "observation",
+                        "resource": repo,
+                        "module": "github",
+                        "attribute": "tag:" + tag,
+                        "value": sha,
+                        "timestamp": now(),
+                        "severity": "none",
+                    }
 
-        return observations
-
-    def observation(self, request: dict) -> list[dict]:
-        resource = normalize_resource(request["resource"])
+    def observation(self, request: dict) -> Iterable[dict]:
+        resource = normalize_github(request["resource"])
         if not "/" in resource:
-            return self.observation_org(request)
-        return self.observation_repo(request)
+            yield from self.observation_org(request)
+            return
+        yield from self.observation_repo(request)
 
-    def change(self, request: dict) -> list[dict]:
+    def change(self, request: dict) -> Iterable[dict]:
         assert request["old_value"] != request["new_value"]
         request["severity"] = "none"
         if request["attribute"] == "visibility":
             request["severity"] = "high"
-        return [request]
+        yield request
 
 
 if __name__ == "__main__":

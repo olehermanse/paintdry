@@ -1,11 +1,9 @@
 from functools import cache
-from time import sleep
+from collections.abc import Iterable
 
 import requests
-from requests.models import REDIRECT_STATI
-from requests.sessions import get_auth_from_url
 
-from modlib import ModBase, normalize_url, now, respond_with_severity, TAG_REGEX
+from modlib import ModBase, now, respond_with_severity, TAG_REGEX
 
 RELEASES_URL = "https://cfengine.com/release-data/enterprise/releases.json"
 
@@ -70,42 +68,40 @@ class ModCFEChecksums(ModBase):
             },
         ]
 
-    def discovery(self, request: dict) -> list[dict]:
+    def discovery(self, request: dict) -> Iterable[dict]:
         url = request["resource"]
         if not url.endswith("/releases.json"):
-            return []
-        return [{
+            return
+        yield {
             "operation": "discovery",
             "resource": url,
             "module": "cfechecksums",
             "source": request["source"],
             "timestamp": request["timestamp"],
-        }]
+        }
 
-    def observation(self, request: dict) -> list[dict]:
+    def observation(self, request: dict) -> Iterable[dict]:
         url = request["resource"]
         if not url.endswith("/releases.json"):
-            return []
+            return
+        assert url == RELEASES_URL
         all = get_all_checksums(url)
         if not all:
-            return []
-        observations = []
+            return
         for artifact, checksum in all.items():
-            observations.append({
-                "operation": request["operation"],
-                "resource": RELEASES_URL,
+            yield {
+                "operation": "observation",
+                "resource": url,
                 "module": "cfechecksums",
                 "attribute": artifact,
                 "value": checksum,
                 "timestamp": now(),
                 "severity": "none",
-            })
-        return observations
+            }
 
-
-    def change(self, request):
+    def change(self, request) -> Iterable[dict]:
         assert request["new_value"] != request["old_value"]
-        return respond_with_severity(request, "high")
+        yield from respond_with_severity(request, "high")
 
 
 def main():

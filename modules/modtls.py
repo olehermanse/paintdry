@@ -1,12 +1,12 @@
 import ssl
 from functools import cache
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from time import sleep
+from collections.abc import Iterable
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 import requests
-import requests_cache
 
 from modlib import ModBase, now, normalize_url, url_to_hostname, respond_with_severity
 
@@ -16,9 +16,9 @@ def cert_checks(url: str):
     url = normalize_url(url)
     try:
         r = requests.get(url, allow_redirects=False)
-        if r.from_cache:
+        if getattr(r, "from_cache", False):
             print("CACHE HIT: " + url)
-        if not r.from_cache:
+        else:
             sleep(0.2)
     except:
         print(f"Exception encountered when looking up cert for {url}")
@@ -61,58 +61,49 @@ class ModTLS(ModBase):
             },
         ]
 
-    def discovery(self, request: dict) -> list[dict]:
+    def discovery(self, request: dict) -> Iterable[dict]:
         url = normalize_url(request["resource"])
 
         if not url.startswith("https://"):
-            return []
+            return
 
-        discoveries = []
-        discoveries.append(
-            {
-                "operation": "discovery",
-                "resource": url,
-                "module": "tls",
-                "source": request["source"],
-                "timestamp": request["timestamp"],
-            }
-        )
-        discoveries.append(
-            {
-                "operation": "discovery",
-                "resource": url_to_hostname(url),
-                "module": "dns",
-                "source": "tls",
-                "timestamp": request["timestamp"],
-            }
-        )
-        return discoveries
+        yield {
+            "operation": "discovery",
+            "resource": url,
+            "module": "tls",
+            "source": request["source"],
+            "timestamp": request["timestamp"],
+        }
+        yield {
+            "operation": "discovery",
+            "resource": url_to_hostname(url),
+            "module": "dns",
+            "source": "tls",
+            "timestamp": request["timestamp"],
+        }
 
-    def observation(self, request: dict) -> list[dict]:
+    def observation(self, request: dict) -> Iterable[dict]:
         url = normalize_url(request["resource"])
 
         if not url.startswith("https://"):
-            return []
+            return
 
-        observations = []
         severity, validity = cert_checks(url)
-        observations.append(
-            {
-                "operation": request["operation"],
-                "resource": url,
-                "module": "tls",
-                "attribute": "certificate",
-                "value": validity,
-                "timestamp": now(),
-                "severity": severity,
-            }
-        )
-        return observations
+        yield {
+            "operation": "observation",
+            "resource": url,
+            "module": "tls",
+            "attribute": "certificate",
+            "value": validity,
+            "timestamp": now(),
+            "severity": severity,
+        }
 
-    def change(self, request):
+    def change(self, request) -> Iterable[dict]:
         if request["new_value"] == "invalid":
-            return respond_with_severity(request, "critical")
-        return respond_with_severity(request, "notice")
+            yield from respond_with_severity(request, "critical")
+            return
+        yield from respond_with_severity(request, "notice")
 
 
 def main():

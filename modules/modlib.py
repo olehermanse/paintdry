@@ -5,6 +5,7 @@ import json
 import fileinput
 import datetime
 from urllib.parse import urlparse
+from collections.abc import Iterable
 import requests_cache
 from datetime import timedelta
 import re
@@ -54,10 +55,10 @@ def normalize_url(url: str) -> str:
     return url + "/"
 
 
-def respond_with_severity(request: dict, severity: str) -> list[dict]:
+def respond_with_severity(request: dict, severity: str) -> Iterable[dict]:
     assert request["old_value"] != request["new_value"]
     request["severity"] = severity
-    return [request]
+    yield request
 
 
 class ModBase:
@@ -67,16 +68,18 @@ class ModBase:
     def example_requests(self):
         return []
 
-    def discovery(self, request: dict) -> list[dict]:
-        return []
+    def discovery(self, request: dict) -> Iterable[dict]:
+        return
+        yield
 
-    def observation(self, request: dict) -> list[dict]:
-        return []
+    def observation(self, request: dict) -> Iterable[dict]:
+        return
+        yield
 
-    def change(self, request: dict) -> list[dict]:
-        return respond_with_severity(request, "unknown")
+    def change(self, request: dict) -> Iterable[dict]:
+        yield from respond_with_severity(request, "unknown")
 
-    def handle_request(self, request: dict) -> list[dict]:
+    def handle_request(self, request: dict) -> Iterable[dict]:
         assert type(request.get("operation", None)) is str
         assert type(request.get("resource", None)) is str
         assert type(request.get("module", None)) is str
@@ -91,8 +94,7 @@ class ModBase:
     def handle_line(self, line):
         request = json.loads(line)
         assert type(request) is dict
-        results = self.handle_request(request)
-        for result in results:
+        for result in self.handle_request(request):
             print(json.dumps(result))
         print()
 
@@ -127,7 +129,7 @@ class ModBase:
             for element in data:
                 results.extend(self.handle_request(element))
         assert type(results) is list
-        with open(output_dir + "/" + name, "w") as f:
+        with open(output_file, "w") as f:
             f.write(json.dumps(results))
         input_file.unlink()
 
@@ -158,8 +160,11 @@ class ModBase:
         return self.cache_folder + "http_cache"
 
     def install_cache(self):
+        cache_path = self.get_cache_path()
+        if not cache_path:
+            return
         requests_cache.install_cache(
-            self.get_cache_path(), expire_after=timedelta(hours=2)
+            cache_path, expire_after=timedelta(hours=2)
         )
 
     def main(self, cache=True):

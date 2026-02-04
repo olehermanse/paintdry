@@ -1,6 +1,7 @@
 import socket
 import time
 from functools import cache
+from collections.abc import Iterable
 from modlib import ModBase, now, normalize_hostname, respond_with_severity
 
 
@@ -9,7 +10,7 @@ def dns_lookup(hostname: str) -> tuple[int, list[str]]:
     time.sleep(1)
     try:
         results = socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)
-        return (now(), sorted([x[4][0] for x in results]))
+        return (now(), sorted([str(x[4][0]) for x in results]))
     except:
         return (now(), [])
 
@@ -32,44 +33,41 @@ class ModDNS(ModBase):
             },
         ]
 
-    def discovery(self, request: dict) -> list[dict]:
+    def discovery(self, request: dict) -> Iterable[dict]:
         resource = normalize_hostname(request["resource"])
         timestamp, ips = dns_lookup(resource)
         # DNS module currently does not discover anything extra
         # Just confirm the requested resource:
-        return [
-            {
-                "operation": "discovery",
-                "resource": normalize_hostname(resource),
-                "module": "dns",
-                "source": request["source"],
-                "timestamp": request["timestamp"],
-            }
-        ]
+        yield {
+            "operation": "discovery",
+            "resource": normalize_hostname(resource),
+            "module": "dns",
+            "source": request["source"],
+            "timestamp": request["timestamp"],
+        }
 
-    def observation(self, request: dict) -> list[dict]:
+    def observation(self, request: dict) -> Iterable[dict]:
         assert request["module"] == "dns"
 
         resource = normalize_hostname(request["resource"])
         timestamp, ips = dns_lookup(resource)
         if not ips:
-            return []
-        return [
-            {
-                "operation": request["operation"],
-                "resource": normalize_hostname(resource),
-                "module": "dns",
-                "attribute": "ip",
-                "value": ", ".join(ips),
-                "timestamp": timestamp,
-                "severity": "none" if len(ips) > 0 else "high",
-            }
-        ]
+            return
+        yield {
+            "operation": "observation",
+            "resource": normalize_hostname(resource),
+            "module": "dns",
+            "attribute": "ip",
+            "value": ", ".join(ips),
+            "timestamp": timestamp,
+            "severity": "none" if len(ips) > 0 else "high",
+        }
 
-    def change(self, request):
+    def change(self, request) -> Iterable[dict]:
         if request["new_value"] == "":
-            return respond_with_severity(request, "high")
-        return respond_with_severity(request, "notice")
+            yield from respond_with_severity(request, "high")
+            return
+        yield from respond_with_severity(request, "notice")
 
 
 def main():

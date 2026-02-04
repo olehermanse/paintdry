@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from modlib import ModBase, now
 
 
@@ -19,33 +20,29 @@ class ModExample(ModBase):
             },
         ]
 
-    def discovery(self, request: dict) -> list[dict]:
+    def discovery(self, request: dict) -> Iterable[dict]:
         if request["resource"] != "localhost":
-            return []
-        return [
-            {
-                "operation": "discovery",
-                "resource": request["resource"],
-                "module": "example",
-                "source": request["source"],
-                "timestamp": request["timestamp"],
-            }
-        ]
+            return
+        yield {
+            "operation": "discovery",
+            "resource": request["resource"],
+            "module": "example",
+            "source": request["source"],
+            "timestamp": request["timestamp"],
+        }
 
-    def observation(self, request: dict) -> list[dict]:
+    def observation(self, request: dict) -> Iterable[dict]:
         if request["resource"] != "localhost":
-            return []
-        return [
-            {
-                "operation": request["operation"],
-                "resource": request["resource"],
-                "module": "example",
-                "attribute": "now",
-                "value": now(),
-                "timestamp": now(),
-                "severity": "none",
-            }
-        ]
+            return
+        yield {
+            "operation": "observation",
+            "resource": request["resource"],
+            "module": "example",
+            "attribute": "now",
+            "value": now(),
+            "timestamp": now(),
+            "severity": "none",
+        }
 
 
 def main():

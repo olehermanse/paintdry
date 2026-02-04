@@ -1,4 +1,5 @@
 from functools import cache
+from collections.abc import Iterable
 
 import requests
 
@@ -49,24 +50,23 @@ class ModSimpleChecksums(ModBase):
             },
         ]
 
-    def discovery(self, request: dict) -> list[dict]:
+    def discovery(self, request: dict) -> Iterable[dict]:
         url = normalize_url(request["resource"])
-        return [{
+        yield {
             "operation": "discovery",
             "resource": url,
             "module": "simplechecksums",
             "source": request["source"],
             "timestamp": request["timestamp"],
-        }]
+        }
 
-    def observation(self, request: dict) -> list[dict]:
+    def observation(self, request: dict) -> Iterable[dict]:
         url = request["resource"]
         checksums = download_and_parse_checksums(url)
         if not checksums:
-            return []
-        observations = []
+            return
         for filename, checksum in checksums.items():
-            observations.append({
+            yield {
                 "operation": "observation",
                 "resource": url,
                 "module": "simplechecksums",
@@ -74,12 +74,11 @@ class ModSimpleChecksums(ModBase):
                 "value": checksum,
                 "timestamp": now(),
                 "severity": "none",
-            })
-        return observations
+            }
 
-    def change(self, request):
+    def change(self, request) -> Iterable[dict]:
         assert request["new_value"] != request["old_value"]
-        return respond_with_severity(request, "high")
+        yield from respond_with_severity(request, "high")
 
 
 def main():

@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 from functools import cache
 from time import sleep
+from collections.abc import Iterable
 
 import requests
 
@@ -175,19 +176,17 @@ class ModContainers(ModBase):
             },
         ]
 
-    def discovery(self, request: dict) -> list[dict]:
+    def discovery(self, request: dict) -> Iterable[dict]:
         resource = request["resource"]
         registry_namespace, image = parse_resource(resource)
 
-        discoveries = [
-            {
-                "operation": "discovery",
-                "resource": resource,
-                "module": "containers",
-                "source": request["source"],
-                "timestamp": request["timestamp"],
-            }
-        ]
+        yield {
+            "operation": "discovery",
+            "resource": resource,
+            "module": "containers",
+            "source": request["source"],
+            "timestamp": request["timestamp"],
+        }
 
         if image is None:
             # Resource is an organization - discover all repositories
@@ -197,19 +196,15 @@ class ModContainers(ModBase):
                 registry, namespace = parts
                 timestamp, repos = dockerhub_list_repositories(namespace)
                 for repo in repos:
-                    discoveries.append(
-                        {
-                            "operation": "discovery",
-                            "resource": f"{registry_namespace}/{repo}",
-                            "module": "containers",
-                            "source": "containers",
-                            "timestamp": request["timestamp"],
-                        }
-                    )
+                    yield {
+                        "operation": "discovery",
+                        "resource": f"{registry_namespace}/{repo}",
+                        "module": "containers",
+                        "source": "containers",
+                        "timestamp": request["timestamp"],
+                    }
 
-        return discoveries
-
-    def observation(self, request: dict) -> list[dict]:
+    def observation(self, request: dict) -> Iterable[dict]:
         assert request["module"] == "containers"
 
         resource = request["resource"]
@@ -217,9 +212,8 @@ class ModContainers(ModBase):
 
         # Can only observe specific images, not organizations
         if image is None:
-            return []
+            return
 
-        observations = []
         timestamp = now()
 
         # Get all tags for the image
@@ -229,29 +223,25 @@ class ModContainers(ModBase):
         version_tags = [tag for tag in tags if TAG_REGEX.fullmatch(tag)]
 
         if not version_tags:
-            return []
+            return
 
         # Sync all matching tags at once and get digests
         digests = skopeo_sync_with_digests(resource, version_tags)
 
         for tag in version_tags:
             digest = digests.get(tag, "")
-            observations.append(
-                {
-                    "operation": request["operation"],
-                    "resource": resource,
-                    "module": "containers",
-                    "attribute": tag,
-                    "value": digest,
-                    "timestamp": timestamp,
-                    "severity": "none" if digest else "high",
-                }
-            )
+            yield {
+                "operation": "observation",
+                "resource": resource,
+                "module": "containers",
+                "attribute": tag,
+                "value": digest,
+                "timestamp": timestamp,
+                "severity": "none" if digest else "high",
+            }
 
-        return observations
-
-    def change(self, request):
-        return respond_with_severity(request, "medium")
+    def change(self, request) -> Iterable[dict]:
+        yield from respond_with_severity(request, "medium")
 
 
 def main():

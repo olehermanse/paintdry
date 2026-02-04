@@ -1,7 +1,7 @@
 import re
-from datetime import timedelta
 from time import sleep
 from functools import cache
+from collections.abc import Iterable
 
 import requests
 
@@ -125,21 +125,18 @@ def http_get(url: str):
             continue
 
 
-def process_html(request: dict, url: str, r: Response) -> list[dict]:
-    """Parse HTML response and return observations."""
-    observations = []
+def process_html(url: str, r: Response) -> Iterable[dict]:
+    """Parse HTML response and yield observations."""
     script_tag_count = r.body.lower().count("<script")
-    observations.append(
-        {
-            "operation": request["operation"],
-            "resource": url,
-            "module": "http",
-            "attribute": "js_script_tags",
-            "value": script_tag_count,
-            "timestamp": r.timestamp,
-            "severity": "none",
-        }
-    )
+    yield {
+        "operation": "observation",
+        "resource": url,
+        "module": "http",
+        "attribute": "js_script_tags",
+        "value": script_tag_count,
+        "timestamp": r.timestamp,
+        "severity": "none",
+    }
 
     # Extract all http/https URLs and get unique sorted hostnames
     url_pattern = re.compile(r'https?://[^\s<>"\']+')
@@ -150,19 +147,15 @@ def process_html(request: dict, url: str, r: Response) -> list[dict]:
         if hostname:
             hostnames.add(hostname)
     external_domains = sorted(hostnames)
-    observations.append(
-        {
-            "operation": request["operation"],
-            "resource": url,
-            "module": "http",
-            "attribute": "external_domains",
-            "value": external_domains,
-            "timestamp": r.timestamp,
-            "severity": "none",
-        }
-    )
-
-    return observations
+    yield {
+        "operation": "observation",
+        "resource": url,
+        "module": "http",
+        "attribute": "external_domains",
+        "value": external_domains,
+        "timestamp": r.timestamp,
+        "severity": "none",
+    }
 
 
 class ModHTTP(ModBase):
@@ -183,65 +176,52 @@ class ModHTTP(ModBase):
             },
         ]
 
-    def discovery(self, request: dict) -> list[dict]:
+    def discovery(self, request: dict) -> Iterable[dict]:
         url = normalize_url(request["resource"])
 
-        discoveries = []
-        discoveries.append(
-            {
+        yield {
+            "operation": "discovery",
+            "resource": url,
+            "module": "http",
+            "source": request["source"],
+            "timestamp": request["timestamp"],
+        }
+        if url.startswith("https://"):
+            yield {
                 "operation": "discovery",
-                "resource": url,
+                "resource": url[0:4] + url[5:],
                 "module": "http",
-                "source": request["source"],
+                "source": "http",
                 "timestamp": request["timestamp"],
             }
-        )
-        if url.startswith("https://"):
-            discoveries.append(
-                {
+        if url.startswith("https://") and is_root_url(url):
+            for path in well_known_paths():
+                yield {
                     "operation": "discovery",
-                    "resource": url[0:4] + url[5:],
+                    "resource": url + path,
                     "module": "http",
                     "source": "http",
                     "timestamp": request["timestamp"],
                 }
-            )
-        if url.startswith("https://") and is_root_url(url):
-            for path in well_known_paths():
-                discoveries.append(
-                    {
-                        "operation": "discovery",
-                        "resource": url + path,
-                        "module": "http",
-                        "source": "http",
-                        "timestamp": request["timestamp"],
-                    }
-                )
         hostname = url_to_hostname(url)
         root_url = normalize_url("https://" + hostname)
-        discoveries.append(
-            {
-                "operation": "discovery",
-                "resource": hostname,
-                "module": "dns",
-                "source": "http",
-                "timestamp": request["timestamp"],
-            }
-        )
-        discoveries.append(
-            {
-                "operation": "discovery",
-                "resource": root_url,
-                "module": "tls",
-                "source": "http",
-                "timestamp": request["timestamp"],
-            }
-        )
-        return discoveries
+        yield {
+            "operation": "discovery",
+            "resource": hostname,
+            "module": "dns",
+            "source": "http",
+            "timestamp": request["timestamp"],
+        }
+        yield {
+            "operation": "discovery",
+            "resource": root_url,
+            "module": "tls",
+            "source": "http",
+            "timestamp": request["timestamp"],
+        }
 
-    def observation(self, request: dict) -> list[dict]:
+    def observation(self, request: dict) -> Iterable[dict]:
         url = normalize_url(request["resource"])
-        observations = []
 
         r = http_get(url)
 
@@ -249,48 +229,46 @@ class ModHTTP(ModBase):
         severity = severity_from_status_code(url, status_code)
         print(f"Got severity {severity} for {status_code} on {url}")
 
-        observations.append(
-            {
+        yield {
+            "operation": request["operation"],
+            "resource": url,
+            "module": "http",
+            "attribute": "status_code",
+            "value": status_code,
+            "timestamp": r.timestamp,
+            "severity": severity,
+        }
+        for key, value in r.notable_headers.items():
+            yield {
                 "operation": request["operation"],
                 "resource": url,
                 "module": "http",
-                "attribute": "status_code",
-                "value": status_code,
+                "attribute": key,
+                "value": value,
                 "timestamp": r.timestamp,
-                "severity": severity,
+                "severity": "none",
             }
-        )
-        for key, value in r.notable_headers.items():
-            observations.append(
-                {
-                    "operation": request["operation"],
-                    "resource": url,
-                    "module": "http",
-                    "attribute": key,
-                    "value": value,
-                    "timestamp": r.timestamp,
-                    "severity": "none",
-                }
-            )
         assume_html = not url.endswith((".txt", ".json", ".css", ".csv", ".js"))
         if status_code in (200, 201) and assume_html:
-            observations.extend(process_html(request, url, r))
+            yield from process_html(url, r)
 
-        return observations
-
-    def change(self, request):
+    def change(self, request) -> Iterable[dict]:
         if request["new_value"] == "":
-            return respond_with_severity(request, "medium")
+            yield from respond_with_severity(request, "medium")
+            return
         if request["attribute"] == "status_code":
             if request["new_value"][0] == "4" or request["new_value"][0] == "5":
-                return respond_with_severity(request, "high")
+                yield from respond_with_severity(request, "high")
+                return
             severity = severity_from_status_code(
                 request["resource"], request["new_value"]
             )
-            return respond_with_severity(request, severity)
+            yield from respond_with_severity(request, severity)
+            return
         if request["old_value"] == "":
-            return respond_with_severity(request, "none")
-        return respond_with_severity(request, "unknown")
+            yield from respond_with_severity(request, "none")
+            return
+        yield from respond_with_severity(request, "unknown")
 
 
 def main():
