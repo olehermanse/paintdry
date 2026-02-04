@@ -1,8 +1,31 @@
 from time import sleep
+import json
 
 import psycopg2
 
 from paintdry.lib import Observation, Resource, Change
+
+
+def _to_json(value):
+    """Convert dict or list to JSON string for storage."""
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
+    return value
+
+
+def _from_json(value):
+    """Try to parse JSON string back to dict/list, return original if not JSON."""
+    if not isinstance(value, str):
+        return value
+    try:
+        parsed = json.loads(value)
+        if isinstance(parsed, (dict, list)):
+            return parsed
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return value
 
 
 def connect_loop():
@@ -53,8 +76,8 @@ class Database:
                 change.severity,
                 change.resource,
                 change.attribute,
-                change.old_value,
-                change.new_value,
+                _to_json(change.old_value),
+                _to_json(change.new_value),
             ),
         )
 
@@ -73,7 +96,7 @@ class Database:
         module = observation.module
         attribute = observation.attribute
         resource = observation.resource
-        value = observation.value
+        value = _to_json(observation.value)
         timestamp = observation.timestamp
         severity = observation.severity
         return self._query(
@@ -182,9 +205,12 @@ class Database:
         if not rows:
             return []
         results = []
+        json_columns = {"value", "old_value", "new_value"}
         for row in rows:
             d = {}
             for key, value in zip(columns, row):
+                if key in json_columns:
+                    value = _from_json(value)
                 d[key] = value
             results.append(d)
         return results
@@ -230,7 +256,7 @@ class Database:
                 resource=row[1],
                 module=row[2],
                 attribute=row[3],
-                value=row[4],
+                value=_from_json(row[4]),
                 first_seen=row[5],
                 last_changed=row[6],
                 last_seen=row[7],
