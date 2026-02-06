@@ -56,7 +56,7 @@ class ModuleRequest(dict):
             return
         if self["operation"] == "observation":
             assert "source" not in self
-            assert "atribute" not in self
+            assert "attribute" not in self
             assert "old_value" not in self
             assert "new_value" not in self
             return
