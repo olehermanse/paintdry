@@ -2,6 +2,8 @@
 set -e
 set -x
 
+find /paintdry/mount-state/modules/ -name '*.json' -delete || true
+
 echo "Waiting for database to be ready and applying schema..."
 until psql -f schema.sql; do
   echo "Schema application failed, retrying in 5 seconds..."
@@ -10,14 +12,15 @@ done
 echo "Schema successfully applied!"
 
 while true; do
-  echo "Deleting stale requests"
-  find /paintdry/mount-state/modules/ -name '*.json' -delete || true
-  python3 paintdry/config_requests.py
-  python3 paintdry/resource_requests.py
-  python3 paintdry/run_modules.py
-  python3 paintdry/process_responses.py
-  python3 paintdry/run_modules.py
-  python3 paintdry/process_responses.py
+  echo "SELECT * FROM resources LIMIT 5;"
+  psql -c "SELECT * FROM resources LIMIT 5;"
+  echo "SELECT * FROM observations LIMIT 5;"
+  psql -c "SELECT * FROM observations LIMIT 5;"
+  echo "SELECT * FROM history LIMIT 5;"
+  psql -c "SELECT * FROM history LIMIT 5;"
+  echo "SELECT * FROM changes LIMIT 5;"
+  psql -c "SELECT * FROM changes LIMIT 5;"
+  python3 -m paintdry update-once
   sleep 60
   echo "Updater waking up"
 done
