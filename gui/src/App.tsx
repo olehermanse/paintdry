@@ -57,7 +57,6 @@ function App() {
                   "first_seen",
                   "last_changed",
                   "last_seen",
-                  "severity",
                 ]}
               />
             }
@@ -78,7 +77,6 @@ function App() {
                   "old_value",
                   "new_value",
                   "timestamp",
-                  "severity",
                 ]}
               />
             }
