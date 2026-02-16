@@ -35,6 +35,7 @@ class ModDNS(ModBase):
 
     def discovery(self, request: dict) -> Iterable[dict]:
         resource = normalize_hostname(request["resource"])
+        timestamp, ips = dns_lookup(resource)
         # DNS module currently does not discover anything extra
         # Just confirm the requested resource:
         yield {
@@ -57,7 +58,7 @@ class ModDNS(ModBase):
             "resource": normalize_hostname(resource),
             "module": "dns",
             "attribute": "ip",
-            "value": ips,
+            "value": ", ".join(ips),
             "timestamp": timestamp,
             "severity": "none" if len(ips) > 0 else "high",
         }
