@@ -134,8 +134,8 @@ class ModBase:
         input_file.unlink()
 
     def handle_files(self, input_dir, output_dir):
-        assert os.path.isdir(input_dir)
-        assert os.path.isdir(output_dir)
+        os.makedirs(input_dir, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
         with os.scandir(input_dir) as it:
             for entry in it:
                 if not entry.is_file() or not entry.name.endswith(".json"):
