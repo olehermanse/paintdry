@@ -33,3 +33,6 @@ secrets.json
 /config/config-override.json
 .DS_Store
 /mount-data.backup
+
+# Rust
+/updater/target
