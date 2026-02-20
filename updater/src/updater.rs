@@ -73,13 +73,18 @@ impl Updater {
                     Some(v) => value_to_db_string(v),
                     None => String::new(),
                 };
+                let attribute = resp.attribute.unwrap_or_default();
+                println!(
+                    "Observation: {} {} = {} ({})",
+                    resp.resource, attribute, value_str, resp.module
+                );
                 let ts = chrono::DateTime::from_timestamp(resp.timestamp, 0)
                     .unwrap_or_else(chrono::Utc::now)
                     .naive_utc();
                 let obs = Observation {
                     resource: resp.resource,
                     module: resp.module,
-                    attribute: resp.attribute.unwrap_or_default(),
+                    attribute,
                     value: value_str,
                     timestamp: ts,
                     severity: resp.severity.unwrap_or_default(),
