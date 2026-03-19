@@ -15,6 +15,12 @@ dependencies = [
 [project.scripts]
 paintdry = "paintdry.__main__:main"
 
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
