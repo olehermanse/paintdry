@@ -66,11 +66,10 @@ fn print_debug_tables() {
 fn main() {
     cleanup_module_files();
     apply_schema();
+    let mut u = updater::Updater::new();
 
     loop {
         print_debug_tables();
-
-        let mut u = updater::Updater::new();
         u.update();
 
         println!("Sleeping for 60 seconds...");

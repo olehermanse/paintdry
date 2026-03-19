@@ -53,6 +53,14 @@ impl Module {
         }
     }
 
+    pub fn output_folder(&self) -> &str {
+        &self.output_folder
+    }
+
+    pub fn wait(&mut self) {
+        self.wait_process();
+    }
+
     fn wait_process(&mut self) {
         if self.slow {
             return;
@@ -83,66 +91,6 @@ impl Module {
                 }
             }
         }
-    }
-
-    pub fn process_responses<F>(&self, mut callback: F)
-    where
-        F: FnMut(serde_json::Value),
-    {
-        println!("Processing responses for {}", self.name);
-        let mut n = 0;
-        let output_path = Path::new(&self.output_folder);
-        if !output_path.is_dir() {
-            println!("Done processing {} responses for {}", n, self.name);
-            return;
-        }
-        let entries: Vec<_> = fs::read_dir(output_path)
-            .unwrap()
-            .filter_map(|e| e.ok())
-            .filter(|e| {
-                e.path().is_file()
-                    && e.path()
-                        .extension()
-                        .map_or(false, |ext| ext == "json")
-            })
-            .collect();
-
-        for entry in entries {
-            let path = entry.path();
-            n += 1;
-            let data = fs::read_to_string(&path).unwrap_or_else(|e| {
-                eprintln!("Failed to read response file {:?}: {}", path, e);
-                "[]".to_string()
-            });
-            let responses: Vec<serde_json::Value> = serde_json::from_str(&data)
-                .unwrap_or_else(|e| {
-                    eprintln!("Failed to parse response file {:?}: {}", path, e);
-                    vec![]
-                });
-            for response in responses {
-                callback(response);
-            }
-            println!(
-                "Done processing response, deleting: {}",
-                path.display()
-            );
-            fs::remove_file(&path).ok();
-        }
-        println!("Done processing {} responses for {}", n, self.name);
-    }
-
-    pub fn process_all_responses<F>(&mut self, callback: F)
-    where
-        F: FnMut(serde_json::Value),
-    {
-        if self.slow {
-            self.process_responses(callback);
-            return;
-        }
-        self.wait_process();
-        self.start();
-        self.wait_process();
-        self.process_responses(callback);
     }
 
     fn start_process(&mut self) {

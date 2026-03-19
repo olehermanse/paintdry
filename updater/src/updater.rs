@@ -1,4 +1,9 @@
 use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
 use crate::config::load_config;
 use crate::database::Database;
@@ -13,16 +18,165 @@ pub struct Updater {
     database: Database,
     cache: HashMap<String, bool>,
     modules: HashMap<String, Module>,
-    discovery_backlog: Vec<Discovery>,
+    module_folders: Arc<Mutex<HashMap<String, String>>>,
+    discovery_backlog: Arc<Mutex<Vec<Discovery>>>,
+}
+
+/// Process all response JSON files found in registered module folders.
+fn process_response_files(
+    db: &mut Database,
+    module_folders: &Arc<Mutex<HashMap<String, String>>>,
+    discovery_backlog: &Arc<Mutex<Vec<Discovery>>>,
+) {
+    let folders: HashMap<String, String> = module_folders.lock().unwrap().clone();
+    for (module_name, folder) in &folders {
+        let output_path = Path::new(folder);
+        if !output_path.is_dir() {
+            continue;
+        }
+        let entries: Vec<_> = match fs::read_dir(output_path) {
+            Ok(rd) => rd
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    e.path().is_file()
+                        && e.path()
+                            .extension()
+                            .map_or(false, |ext| ext == "json")
+                })
+                .collect(),
+            Err(_) => continue,
+        };
+        for entry in entries {
+            let path = entry.path();
+            let data = fs::read_to_string(&path).unwrap_or_else(|e| {
+                eprintln!("Failed to read response file {:?}: {}", path, e);
+                "[]".to_string()
+            });
+            let responses: Vec<serde_json::Value> =
+                serde_json::from_str(&data).unwrap_or_else(|e| {
+                    eprintln!("Failed to parse response file {:?}: {}", path, e);
+                    vec![]
+                });
+            for response in responses {
+                process_single_response(db, module_name, response, discovery_backlog);
+            }
+            println!(
+                "Done processing response, deleting: {}",
+                path.display()
+            );
+            fs::remove_file(&path).ok();
+        }
+    }
+}
+
+/// Process a single parsed module response: upsert observations/resources/changes,
+/// push cross-module discoveries to the shared backlog.
+fn process_single_response(
+    db: &mut Database,
+    module_name: &str,
+    response: serde_json::Value,
+    discovery_backlog: &Arc<Mutex<Vec<Discovery>>>,
+) {
+    let resp: ModuleResponse = match serde_json::from_value(response) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("Failed to parse module response: {}", e);
+            return;
+        }
+    };
+
+    match resp.operation.as_str() {
+        "observation" => {
+            let value_str = match &resp.value {
+                Some(v) => value_to_db_string(v),
+                None => String::new(),
+            };
+            let attribute = resp.attribute.unwrap_or_default();
+            println!(
+                "Observation: {} {} = {} ({})",
+                resp.resource, attribute, value_str, resp.module
+            );
+            let ts = chrono::DateTime::from_timestamp(resp.timestamp, 0)
+                .unwrap_or_else(chrono::Utc::now)
+                .naive_utc();
+            let obs = Observation {
+                resource: resp.resource,
+                module: resp.module,
+                attribute,
+                value: value_str,
+                timestamp: ts,
+                severity: resp.severity.unwrap_or_default(),
+            };
+            db.upsert_observation(&obs);
+        }
+        "discovery" => {
+            let discovery = Discovery {
+                resource: resp.resource,
+                module: resp.module,
+                source: resp.source.unwrap_or_default(),
+            };
+            if discovery.module != module_name {
+                println!(
+                    "Discovery: {} for {} suggested by {}",
+                    discovery.resource, discovery.module, module_name
+                );
+                discovery_backlog.lock().unwrap().push(discovery);
+            } else {
+                println!(
+                    "Discovery: {} accepted by {}",
+                    discovery.resource, module_name
+                );
+                let resource = Resource::from_discovery(&discovery);
+                db.upsert_resource(&resource, &discovery.source);
+            }
+        }
+        "change" => {
+            let change = Change {
+                resource: resp.resource,
+                module: resp.module,
+                attribute: resp.attribute.unwrap_or_default(),
+                old_value: resp
+                    .old_value
+                    .map(|v| value_to_db_string(&v))
+                    .unwrap_or_default(),
+                new_value: resp
+                    .new_value
+                    .map(|v| value_to_db_string(&v))
+                    .unwrap_or_default(),
+                severity: resp.severity.unwrap_or_default(),
+                timestamp: resp.timestamp,
+            };
+            db.update_change(&change);
+        }
+        other => {
+            eprintln!("Unknown operation: {}", other);
+        }
+    }
 }
 
 impl Updater {
     pub fn new() -> Self {
+        let module_folders: Arc<Mutex<HashMap<String, String>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let discovery_backlog: Arc<Mutex<Vec<Discovery>>> = Arc::new(Mutex::new(Vec::new()));
+
+        // Spawn background thread for continuous response processing
+        let bg_folders = Arc::clone(&module_folders);
+        let bg_backlog = Arc::clone(&discovery_backlog);
+        thread::spawn(move || {
+            let mut db = Database::new();
+            loop {
+                process_response_files(&mut db, &bg_folders, &bg_backlog);
+                thread::sleep(Duration::from_secs(5));
+            }
+        });
+
         Self {
             database: Database::new(),
             cache: HashMap::new(),
             modules: HashMap::new(),
-            discovery_backlog: Vec::new(),
+            module_folders,
+            discovery_backlog,
         }
     }
 
@@ -32,6 +186,10 @@ impl Updater {
         }
         if let Some(mod_config) = config.modules.get(name) {
             let module = Module::new(name, &mod_config.command, mod_config.slow);
+            self.module_folders
+                .lock()
+                .unwrap()
+                .insert(name.to_string(), module.output_folder().to_string());
             self.modules.insert(name.to_string(), module);
             true
         } else {
@@ -40,92 +198,9 @@ impl Updater {
         }
     }
 
-    fn process_discovery(&mut self, responding_module: &str, discovery: Discovery) {
-        if discovery.module != responding_module {
-            println!(
-                "Discovery: {} for {} suggested by {}",
-                discovery.resource, discovery.module, responding_module
-            );
-            self.discovery_backlog.push(discovery);
-            return;
-        }
-        println!(
-            "Discovery: {} accepted by {}",
-            discovery.resource, responding_module
-        );
-        let resource = Resource::from_discovery(&discovery);
-        self.database
-            .upsert_resource(&resource, &discovery.source);
-    }
-
-    fn process_response(&mut self, module_name: &str, response: serde_json::Value) {
-        let resp: ModuleResponse = match serde_json::from_value(response) {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("Failed to parse module response: {}", e);
-                return;
-            }
-        };
-
-        match resp.operation.as_str() {
-            "observation" => {
-                let value_str = match &resp.value {
-                    Some(v) => value_to_db_string(v),
-                    None => String::new(),
-                };
-                let attribute = resp.attribute.unwrap_or_default();
-                println!(
-                    "Observation: {} {} = {} ({})",
-                    resp.resource, attribute, value_str, resp.module
-                );
-                let ts = chrono::DateTime::from_timestamp(resp.timestamp, 0)
-                    .unwrap_or_else(chrono::Utc::now)
-                    .naive_utc();
-                let obs = Observation {
-                    resource: resp.resource,
-                    module: resp.module,
-                    attribute,
-                    value: value_str,
-                    timestamp: ts,
-                    severity: resp.severity.unwrap_or_default(),
-                };
-                self.database.upsert_observation(&obs);
-            }
-            "discovery" => {
-                let discovery = Discovery {
-                    resource: resp.resource,
-                    module: resp.module,
-                    source: resp.source.unwrap_or_default(),
-                };
-                self.process_discovery(module_name, discovery);
-            }
-            "change" => {
-                let change = Change {
-                    resource: resp.resource,
-                    module: resp.module,
-                    attribute: resp.attribute.unwrap_or_default(),
-                    old_value: resp
-                        .old_value
-                        .map(|v| value_to_db_string(&v))
-                        .unwrap_or_default(),
-                    new_value: resp
-                        .new_value
-                        .map(|v| value_to_db_string(&v))
-                        .unwrap_or_default(),
-                    severity: resp.severity.unwrap_or_default(),
-                    timestamp: resp.timestamp,
-                };
-                self.database.update_change(&change);
-            }
-            other => {
-                eprintln!("Unknown operation: {}", other);
-            }
-        }
-    }
-
     fn process_discovery_backlog(&mut self, config: &Config) {
         println!("Processing discovery backlog");
-        let backlog: Vec<Discovery> = self.discovery_backlog.drain(..).collect();
+        let backlog: Vec<Discovery> = self.discovery_backlog.lock().unwrap().drain(..).collect();
         let mut per_module: HashMap<String, Vec<ModuleRequest>> = HashMap::new();
 
         for discovery in &backlog {
@@ -237,37 +312,10 @@ impl Updater {
         println!("Done processing {} new change(s).", changes.len());
     }
 
-    fn process_responses(&mut self, config: &Config) {
-        // Non-blocking: opportunistically process ready responses
-        let module_names: Vec<String> = self.modules.keys().cloned().collect();
-        for name in &module_names {
-            let module = self.modules.remove(name).unwrap();
-            let name_clone = name.clone();
-            let mut responses: Vec<(String, serde_json::Value)> = Vec::new();
-            module.process_responses(|response| {
-                responses.push((name_clone.clone(), response));
-            });
-            self.modules.insert(name.clone(), module);
-            for (mod_name, response) in responses {
-                self.process_response(&mod_name, response);
-            }
+    fn wait_modules(&mut self) {
+        for module in self.modules.values_mut() {
+            module.wait();
         }
-
-        // Blocking: wait for everything to finish
-        for name in &module_names {
-            let mut module = self.modules.remove(name).unwrap();
-            let name_clone = name.clone();
-            let mut responses: Vec<(String, serde_json::Value)> = Vec::new();
-            module.process_all_responses(|response| {
-                responses.push((name_clone.clone(), response));
-            });
-            self.modules.insert(name.clone(), module);
-            for (mod_name, response) in responses {
-                self.process_response(&mod_name, response);
-            }
-        }
-
-        self.process_discovery_backlog(config);
     }
 
     pub fn update(&mut self) {
@@ -318,7 +366,12 @@ impl Updater {
                 module.start();
             }
         }
-        self.process_responses(&config);
+
+        // Wait for subprocesses to finish (response files processed by background thread)
+        self.wait_modules();
+
+        // Process cross-module discoveries
+        self.process_discovery_backlog(&config);
 
         // Send change requests again
         self.process_changes(&config);
