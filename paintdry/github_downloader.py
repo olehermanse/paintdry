@@ -200,12 +200,18 @@ def main():
                 unshallow_cmd = (
                     f"sh -c 'cd {default_branch_path} && git fetch --unshallow'"
                 )
+                remove_remote_cmd = f"sh -c 'cd {default_branch_path} && git remote | grep -q origin && git remote remove origin'"
+                add_remote_cmd = f"sh -c 'cd {default_branch_path} && git remote add origin {clone_path}'"
                 if not os.path.exists(default_branch_path):
                     cmd(clone_cmd)
                     sleep(2)
+                    cmd(remove_remote_cmd)
                 else:
+                    cmd(remove_remote_cmd)
+                    cmd(add_remote_cmd)
                     cmd(pull_cmd)
                     sleep(1)
+                    cmd(remove_remote_cmd)
 
                 if not os.path.exists(default_branch_path):
                     # TODO handle empty repos
@@ -216,8 +222,11 @@ def main():
                     )
                     == "true"
                 ):
+                    cmd(remove_remote_cmd)
+                    cmd(add_remote_cmd)
                     cmd(unshallow_cmd)
                     sleep(2)
+                    cmd(remove_remote_cmd)
                 tags = cmd_stdout(
                     f"sh -c 'cd {default_branch_path} && git show-ref --tags'", fail_ok=True
                 ).decode("utf-8")
