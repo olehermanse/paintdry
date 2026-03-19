@@ -10,7 +10,11 @@ from modlib import ModBase, now, respond_with_severity, normalize_url
 def download_and_parse_checksums(url):
     """Download a checksums.txt file and parse it into a dict of filename -> checksum."""
     data = {}
-    r = requests.get(url)
+    try:
+        r = requests.get(url)
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to download {url}: {e}")
+        return {}
     if r.status_code != 200:
         print(f"Failed to download {url}")
         return {}

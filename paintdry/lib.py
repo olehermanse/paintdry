@@ -125,7 +125,7 @@ class ModuleResponse(dict):
             value=value,
         )
         for key in ["value", "source", "attribute", "new_value", "old_value"]:
-            if self[key] is None:
+            if key in self and self[key] is None:
                 del self[key]
         self.validate()
 
