@@ -16,7 +16,7 @@ dependencies = [
 paintdry = "paintdry.__main__:main"
 
 [project.optional-dependencies]
-test = ["pytest>=8.0"]
+test = ["pytest>=9.0.3"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
