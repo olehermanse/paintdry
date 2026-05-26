@@ -120,7 +120,7 @@ def main():
     st = os.stat(secrets_json)
     oct_perm = str(oct(st.st_mode))[-3:]
     if oct_perm != "600":
-        user_error("Permissions of " + secrets_json + "must be 600, not " + oct_perm)
+        user_error("Permissions of " + secrets_json + " must be 600, not " + oct_perm)
     with open(secrets_json, "r") as f:
         secrets = json.loads(f.read())
     if not secrets.get("github_username"):
