@@ -216,7 +216,7 @@ def main():
                 # TODO: Add trivy here?
                 #       Remove manual trivy-scans.sh
                 #       Move results to repo folder?
-#               # TODO: Checkout tags and branches and run trivy for each (after some filtering).
+                # TODO: Checkout tags and branches and run trivy for each (after some filtering).
 
                 if not os.path.exists(default_branch_path):
                     # TODO handle empty repos
