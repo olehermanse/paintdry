@@ -213,6 +213,11 @@ def main():
                     sleep(1)
                     cmd(remove_remote_cmd)
 
+                # TODO: Add trivy here?
+                #       Remove manual trivy-scans.sh
+                #       Move results to repo folder?
+#               # TODO: Checkout tags and branches and run trivy for each (after some filtering).
+
                 if not os.path.exists(default_branch_path):
                     # TODO handle empty repos
                     continue
