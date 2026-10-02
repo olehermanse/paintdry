@@ -218,6 +218,30 @@ class ModGitHub(ModBase):
                         "severity": "none",
                     }
 
+        sbom_data = folder + "/trivy.json"
+        if os.path.isfile(sbom_data):
+            with open(sbom_data, "r") as f:
+                sbom_data = json.loads(f.read())
+            # Same package can appear in multiple lockfiles, collect all versions
+            dependencies = {}
+            for component in sbom_data.get("components", []):
+                purl = component.get("purl")
+                if not purl:
+                    # E.g. the lockfile itself (type "application")
+                    continue
+                name = purl.split("@")[0]
+                dependencies.setdefault(name, set()).add(component.get("version", ""))
+            for name, versions in dependencies.items():
+                yield {
+                    "operation": "observation",
+                    "resource": repo,
+                    "module": "github",
+                    "attribute": "dependency:" + name,
+                    "value": json.dumps(sorted(versions)),
+                    "timestamp": timestamp,
+                    "severity": "none",
+                }
+
     def observation(self, request: dict) -> Iterable[dict]:
         resource = normalize_github(request["resource"])
         if not "/" in resource:
