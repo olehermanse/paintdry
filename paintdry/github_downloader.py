@@ -1,44 +1,48 @@
 import os
 import json
 import sys
-import requests
 import requests_cache
-import subprocess
 from datetime import timedelta, datetime
 from time import sleep
-
-token = None
-
-
-def github_get(url):
-    print("GET: " + url)
-    r = requests.get(
-        url,
-        headers={
-            "Authorization": f"token {token}",
-            "X-GitHub-Api-Version": "2022-11-28",
-        },
-    )
-    if getattr(r, "from_cache", False):
-        print("CACHE HIT: " + url)
-    else:
-        sleep(0.2)
-        if r.status_code != 200:
-            print(str(r.text))
-            print(str(r.status_code))
-            sleep(0.8)
-    assert r.status_code == 200
-    result = r.json()
-    # print(result)
-    return result
+from utils import user_error, mkdir, rm_rf, cmd
 
 
-def github_repo_info(repos, organizations):
+class GithubSession:
+
+    def __init__(self, token, cache_folder):
+        self.session = requests_cache.CachedSession(
+            os.path.join(cache_folder, "http_cache"), expire_after=timedelta(hours=2)
+        )
+        self.session.headers.update(
+            {
+                "Authorization": f"token {token}",
+                "X-GitHub-Api-Version": "2022-11-28",
+            }
+        )
+
+    def get(self, url):
+        print("GET: " + url)
+        r = self.session.get(url)
+        if getattr(r, "from_cache", False):
+            print("CACHE HIT: " + url)
+        else:
+            sleep(0.2)
+            if r.status_code != 200:
+                print(str(r.text))
+                print(str(r.status_code))
+                sleep(0.8)
+        assert r.status_code == 200
+        result = r.json()
+        return result
+
+
+def github_repo_info(session: GithubSession, organizations):
+    repos = {}
     repos["github.com"] = {}
     for org in organizations:
         repos["github.com"][org] = {}
         for i in range(1, 10):
-            data = github_get(
+            data = session.get(
                 f"https://api.github.com/orgs/{org}/repos?per_page=100&page={i}"
             )
             if not data:
@@ -46,95 +50,62 @@ def github_repo_info(repos, organizations):
             for repo in data:
                 name = repo["name"]
                 if repo["visibility"] == "public" and not repo["archived"]:
-                    rulesets = github_get(
+                    rulesets = session.get(
                         f"https://api.github.com/repos/{org}/{name}/rulesets?per_page=100&page=1"
                     )
                     repo["rulesets"] = rulesets
                 repos["github.com"][org][name] = repo
+    return repos
 
 
 def record_org_metadata(path, org, repos):
-    data = {"repos": []}
-    for name, repo in repos.items():
-        data["repos"].append(name)
-    data["repos"] = sorted(data["repos"])
+    data = {"repos": sorted(repos)}
     with open(path + "/org-metadata.json", "w") as f:
         f.write(json.dumps(data, indent=2))
         f.write("\n")
 
 
-def mkdir(path):
-    os.makedirs(path, exist_ok=True)
-
-
-def cmd(cmd):
-    print("CMD: " + cmd.replace(token, "TOKEN"))
-    os.system(cmd)
-
-
-def cmd_exitcode(cmd):
-    print("CMD: " + cmd.replace(token, "TOKEN"))
-    return os.system(cmd)
-
-
-def cmd_stdout(cmd, fail_ok=False):
-    print("CMD: " + cmd.replace(token, "TOKEN"))
-    if fail_ok:
-        try:
-            return subprocess.check_output(cmd, shell=True)
-        except:
-            return b""
-    return subprocess.check_output(cmd, shell=True)
-
-
-def user_error(message):
-    print("Error: " + message)
-    sys.exit(1)
-
-
-def env_var(key):
-    r = os.getenv(key)
-    if not r:
-        user_error("Environment variable missing: " + key)
-    return r
-
-
-def main():
-    if len(sys.argv) != 4:
-        print(
-            "Usage: github_downloader.py <secrets.json> <target_folder> <cache_folder>"
-        )
-        sys.exit(1)
-
-    secrets_json = sys.argv[1]
-    if not os.path.isfile(secrets_json):
+def get_secrets(secrets_json):
+    try:
+        st = os.stat(secrets_json)
+    except FileNotFoundError:
         print("Warning: Secrets file missing - skipping downloads...")
         sys.exit(0)
-    root = sys.argv[2]
-    cache_folder = sys.argv[3]
 
-    requests_cache.install_cache(
-        cache_folder + "http_cache", expire_after=timedelta(hours=2)
-    )
+    assert st is not None
 
-    st = os.stat(secrets_json)
     oct_perm = str(oct(st.st_mode))[-3:]
     if oct_perm != "600":
         user_error("Permissions of " + secrets_json + " must be 600, not " + oct_perm)
-    with open(secrets_json, "r") as f:
-        secrets = json.loads(f.read())
+    try:
+        with open(secrets_json, "r") as f:
+            secrets = json.loads(f.read())
+    except Exception as e:
+        user_error(f"Something went wrong while reading {secrets_json}: '{str(e)}'")
+
+    if not isinstance(secrets, dict):
+        user_error(f"{secrets_json} must contain a JSON object")
+
     if not secrets.get("github_username"):
         user_error("Missing secret: github_username")
     if not secrets.get("github_access_token"):
         user_error("Missing secret: github_access_token")
     if not secrets.get("github_organizations"):
         user_error("Missing secret: github_organizations")
+
+    return secrets
+
+
+def download_repos(secrets_json, root, cache_folder):
+    secrets = get_secrets(secrets_json)
     username = secrets["github_username"]
-    global token
     token = secrets["github_access_token"]
     organizations = secrets["github_organizations"]
-    data = {}
-    github_repo_info(data, organizations)
+
+    github_session = GithubSession(token, cache_folder)
+
+    data = github_repo_info(github_session, organizations)
+
     mkdir(f"{root}")
     mkdir(f"{root}/trivy-results")
     # TODO: Get trusted path from config
@@ -161,11 +132,11 @@ def main():
                     if not os.path.exists(path):
                         mkdir(path)
                     if os.path.exists(f"{path}/branches"):
-                        cmd(f"rm -rf '{path}/branches'")
+                        rm_rf(f"{path}/branches")
                     if os.path.exists(f"{path}/metadata.json"):
-                        cmd(f"rm -rf '{path}/metadata.json'")
+                        rm_rf(f"{path}/metadata.json")
                     if os.path.exists(f"{path}/update"):
-                        cmd(f"rm -rf '{path}/update'")
+                        rm_rf(f"{path}/update")
                     if not os.path.exists(f"{path}/archived"):
                         cmd(f"touch '{path}/archived'")
                     continue
@@ -203,15 +174,15 @@ def main():
                 remove_remote_cmd = f"sh -c 'cd {default_branch_path} && git remote | grep -q origin && git remote remove origin'"
                 add_remote_cmd = f"sh -c 'cd {default_branch_path} && git remote add origin {clone_path}'"
                 if not os.path.exists(default_branch_path):
-                    cmd(clone_cmd)
+                    cmd(clone_cmd, token=token)
                     sleep(2)
-                    cmd(remove_remote_cmd)
+                    cmd(remove_remote_cmd, fail_ok=True)
                 else:
-                    cmd(remove_remote_cmd)
-                    cmd(add_remote_cmd)
+                    cmd(remove_remote_cmd, fail_ok=True)
+                    cmd(add_remote_cmd, token=token)
                     cmd(pull_cmd)
                     sleep(1)
-                    cmd(remove_remote_cmd)
+                    cmd(remove_remote_cmd, fail_ok=True)
 
                 # TODO: Add trivy here?
                 #       Remove manual trivy-scans.sh
@@ -222,19 +193,20 @@ def main():
                     # TODO handle empty repos
                     continue
                 if (
-                    cmd_stdout(
+                    cmd(
                         f"sh -c 'cd {default_branch_path} && git rev-parse --is-shallow-repository'"
-                    )
+                    ).stdout.strip()
                     == "true"
                 ):
-                    cmd(remove_remote_cmd)
-                    cmd(add_remote_cmd)
+                    cmd(remove_remote_cmd, fail_ok=True)
+                    cmd(add_remote_cmd, token=token)
                     cmd(unshallow_cmd)
                     sleep(2)
-                    cmd(remove_remote_cmd)
-                tags = cmd_stdout(
-                    f"sh -c 'cd {default_branch_path} && git show-ref --tags'", fail_ok=True
-                ).decode("utf-8")
+                    cmd(remove_remote_cmd, fail_ok=True)
+                tags = cmd(
+                    f"sh -c 'cd {default_branch_path} && git show-ref --tags'",
+                    fail_ok=True,
+                ).stdout
 
                 if tags:
                     tag_data = {}
@@ -247,7 +219,7 @@ def main():
                             continue
                         if not line[sha_length:].startswith(separator):
                             continue
-                        tag = line[expected_length - 1:]
+                        tag = line[expected_length - 1 :]
                         sha = line[0:sha_length]
                         tag_data[tag] = sha
 
@@ -263,6 +235,20 @@ def main():
                 now = datetime.now()
                 with open(ts_path, "w") as f:
                     f.write(now.isoformat() + "\n")
+
+
+def main():
+    if len(sys.argv) != 4:
+        print(
+            "Usage: github_downloader.py <secrets.json> <target_folder> <cache_folder>"
+        )
+        sys.exit(1)
+
+    secrets_json = sys.argv[1]
+    target_folder = sys.argv[2]
+    cache_folder = sys.argv[3]
+
+    download_repos(secrets_json, target_folder, cache_folder)
 
 
 if __name__ == "__main__":
