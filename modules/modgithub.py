@@ -17,6 +17,15 @@ def normalize_github(url: str) -> str:
 
 
 class ModGitHub(ModBase):
+    def repo_folder(self, resource: str) -> str:
+        # The downloader writes repos to <state folder>/repos/github.com/<org>/<repo>.
+        # The state folder is passed as the third argument (cache_folder) when
+        # run by the updater or the downloader, so this works regardless of
+        # the current working directory. Fall back to a relative path when
+        # run manually (stdin / example mode) from the repo root.
+        state = self.cache_folder or "mount-state/"
+        return os.path.join(state, "repos", "github.com", resource)
+
     def example_requests(self):
         return [
             {
@@ -37,7 +46,7 @@ class ModGitHub(ModBase):
     def discover_repos(self, request) -> Iterable[dict]:
         org = normalize_github(request["resource"])
         assert "/" not in org
-        folder = f"mount-state/repos/github.com/{org}"
+        folder = self.repo_folder(org)
         if not os.path.exists(folder):
             return
         yield {
@@ -77,7 +86,7 @@ class ModGitHub(ModBase):
 
     def observation_org(self, request: dict) -> Iterable[dict]:
         org = normalize_github(request["resource"])
-        folder = f"mount-state/repos/github.com/{org}"
+        folder = self.repo_folder(org)
         if not os.path.exists(folder):
             return
         yield {
@@ -109,7 +118,7 @@ class ModGitHub(ModBase):
 
     def observation_repo(self, request: dict) -> Iterable[dict]:
         repo = normalize_github(request["resource"])
-        folder = f"mount-state/repos/github.com/{repo}"
+        folder = self.repo_folder(repo)
         if not os.path.exists(folder):
             return
         if os.path.exists(folder + "/archived"):

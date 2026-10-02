@@ -156,13 +156,20 @@ class Module:
         self.write_requests(self._request_backlog)
         self._request_backlog = []
 
+    def _has_pending_requests(self) -> bool:
+        with os.scandir(self._input_folder) as it:
+            return any(e.is_file() and e.name.endswith(".json") for e in it)
+
     def start(self):
         # TODO check if process already exited so we can start another
         if self._process:
             return
-        # if len(self._request_backlog) == 0:
-        #     return
-        self._dump_backlog()
+        if self._request_backlog:
+            self._dump_backlog()
+        # Nothing to do (and no pre-existing request files) - don't start
+        # the module, and don't write an empty request file:
+        if not self._has_pending_requests():
+            return
         self._start_process()
 
     def _write_requests_with_checksum(self, requests):
