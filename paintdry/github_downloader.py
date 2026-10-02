@@ -6,6 +6,8 @@ from datetime import timedelta, datetime
 from time import sleep
 from utils import user_error, mkdir, rm_rf, cmd
 
+from trivy import trivy_scan
+
 
 class GithubSession:
 
@@ -184,14 +186,14 @@ def download_repos(secrets_json, root, cache_folder):
                     sleep(1)
                     cmd(remove_remote_cmd, fail_ok=True)
 
-                # TODO: Add trivy here?
-                #       Remove manual trivy-scans.sh
-                #       Move results to repo folder?
                 # TODO: Checkout tags and branches and run trivy for each (after some filtering).
 
                 if not os.path.exists(default_branch_path):
                     # TODO handle empty repos
                     continue
+
+                trivy_scan(os.path.join(root, website, org, reponame), default_branch_path)
+
                 if (
                     cmd(
                         f"sh -c 'cd {default_branch_path} && git rev-parse --is-shallow-repository'"
