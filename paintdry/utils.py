@@ -3,6 +3,7 @@ import sys
 import json
 import copy
 import subprocess
+import shutil
 import hashlib
 import datetime
 
@@ -115,3 +116,42 @@ class JsonFile:
         if not key in self._data:
             return default
         return self._data[key]
+
+
+def mkdir(path):
+    os.makedirs(path, exist_ok=True)
+
+
+def rm_rf(path):
+    print("RM: " + path)
+    if os.path.isdir(path) and not os.path.islink(path):
+        shutil.rmtree(path)
+    elif os.path.lexists(path):
+        os.remove(path)
+
+
+def cmd(command, token=None, fail_ok=False):
+    def mask(s):
+        return s.replace(token, "TOKEN") if token else s
+
+    print("CMD: " + mask(command))
+    r = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if r.stdout:
+        print(mask(r.stdout), end="")
+    if r.stderr:
+        print(mask(r.stderr), end="", file=sys.stderr)
+    if r.returncode != 0 and not fail_ok:
+        print(f"Warning: Command exited with code {r.returncode}")
+    return r
+
+
+def user_error(message):
+    print("Error: " + message)
+    sys.exit(1)
+
+
+def env_var(key):
+    r = os.getenv(key)
+    if not r:
+        user_error("Environment variable missing: " + key)
+    return r

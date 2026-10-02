@@ -4,6 +4,7 @@ FROM docker.io/fedora:42@sha256:99e203b80b1c3d8f7e161ec10a68fd02b081ef83a3963553
 RUN yum update -y
 
 RUN yum install -y openssl gcc git gpg
+RUN yum install -y trivy
 RUN yum install -y python3 python3-devel
 RUN yum install -y nodejs npm
 RUN npm install --global prettier

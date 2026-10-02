@@ -103,10 +103,10 @@ class Response:
 
 
 @cache
-def http_get(url: str):
-    while True:
+def http_get(url: str, attempts: int = 3):
+    for _ in range(attempts):
         try:
-            r = requests.get(url, allow_redirects=False)
+            r = requests.get(url, allow_redirects=False, timeout=30)
             # from_cache is a special thing added by requests-cache, not a part of the normal Response type
             if getattr(r, "from_cache", False):
                 print("CACHE HIT: " + url)
@@ -119,10 +119,12 @@ def http_get(url: str):
                     # like 500 for example, slow down further:
                     sleep(0.8)
             return Response(r)
-        except:
-            print(f"GET failed unexpectedly: {url}")
+        except Exception as e:
+            print(f"GET failed unexpectedly: {url} ({e})")
             sleep(2)
-            continue
+    # Give up, so one unreachable URL doesn't block the module (and updater) forever
+    print(f"GET failed {attempts} times, skipping: {url}")
+    return None
 
 
 def process_html(url: str, r: Response) -> Iterable[dict]:
@@ -224,6 +226,8 @@ class ModHTTP(ModBase):
         url = normalize_url(request["resource"])
 
         r = http_get(url)
+        if r is None:
+            return
 
         status_code = r.status_code
         severity = severity_from_status_code(url, status_code)
