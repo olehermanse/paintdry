@@ -196,7 +196,7 @@ def main():
                     f"https://{username}:{token}@{website}/{org}/{reponame}.git"
                 )
                 clone_cmd = f"git clone --recurse-submodules --single-branch --shallow-submodules -b {default_branch} {clone_path} {default_branch_path}"
-                pull_cmd = f"sh -c 'cd {default_branch_path} && git pull'"
+                pull_cmd = f"sh -c 'cd {default_branch_path} && git pull origin {default_branch}'"
                 unshallow_cmd = (
                     f"sh -c 'cd {default_branch_path} && git fetch --unshallow'"
                 )
