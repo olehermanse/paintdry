@@ -63,7 +63,7 @@ class ModDNS(ModBase):
         }
 
     def change(self, request) -> Iterable[dict]:
-        if request["new_value"] == "":
+        if not request["new_value"]:
             yield from respond_with_severity(request, "high")
             return
         yield from respond_with_severity(request, "notice")

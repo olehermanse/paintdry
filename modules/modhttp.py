@@ -257,7 +257,7 @@ class ModHTTP(ModBase):
             yield from process_html(url, r)
 
     def change(self, request) -> Iterable[dict]:
-        if request["new_value"] == "":
+        if not request["new_value"]:
             yield from respond_with_severity(request, "medium")
             return
         if request["attribute"] == "status_code":
@@ -269,7 +269,7 @@ class ModHTTP(ModBase):
             )
             yield from respond_with_severity(request, severity)
             return
-        if request["old_value"] == "":
+        if not request["old_value"]:
             yield from respond_with_severity(request, "none")
             return
         yield from respond_with_severity(request, "unknown")
