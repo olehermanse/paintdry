@@ -3,6 +3,7 @@ from functools import cache
 from collections.abc import Iterable
 from modlib import ModBase, strip_prefix, now, TAG_REGEX
 import os
+import sys
 import json
 
 @cache
@@ -265,7 +266,28 @@ class ModGitHub(ModBase):
             request["severity"] = "high"
         yield request
 
+    def handle_repos(self, repos: list[str], input_dir: str, output_dir: str):
+        repos = {normalize_github(repo) for repo in repos}
+        with os.scandir(input_dir) as it:
+            names = [e.name for e in it if e.is_file() and e.name.endswith(".json")]
+        for name in names:
+            try:
+                with open(os.path.join(input_dir, name), "r") as f:
+                    data = json.loads(f.read())
+            except FileNotFoundError:
+                # already deleted
+                continue
+            if type(data) is dict:
+                data = [data]
+            if data and all(normalize_github(r["resource"]) in repos for r in data):
+                self.handle_single_file(input_dir, name, output_dir)
+
 
 if __name__ == "__main__":
     module = ModGitHub()
-    module.main()
+    # python3 modgithub.py repo <requests_dir> <responses_dir> <state_dir> <org/repo>...
+    if len(sys.argv) >= 6 and sys.argv[1] == "repo":
+        module.cache_folder = sys.argv[4]
+        module.handle_repos(sys.argv[5:], sys.argv[2], sys.argv[3])
+    else:
+        module.main()
