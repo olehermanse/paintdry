@@ -2,7 +2,7 @@
 
 ## Goals
 
-- Merge github_downloader.py and modgithub.py
+- Merge `github_downloader.py` and `modgithub.py`
 - Downloading repos / using the GitHub API happens slowly (1s sleep between each request) and sequentially.
 - After downloading a repo (pull / clone) we should process it in parallel (tags, trivy etc.)
 - Requests for discovery and change are easy and should be answered fast, for example between every repo clone.
@@ -15,6 +15,7 @@
 - If the module receives 2 requests for the same resource (because it took too long to answer the first one), we can deduplicate them, keeping only the most recent request.
   Dropping some requests is okay, for example in the case of errors or rate limiting.
 - If the module starts and there are 0 requests, it should be a no-op and exit.
+- We must ensure paintdry can run other modules in parallell, multiple times, without waiting for one slow run of the GitHub module.
 
 ## Requests
 
@@ -23,6 +24,7 @@ The module receives 3 types of requests:
 - Discovery - Register resources in the database (from config and other modules).
   In the case of GitHub module, this should discover all repos in an org when a discovery request arrives for the org.
 - Change - Sent to us by the updater when it detects a value has changed (new observation.value is different from old observation.value).
+  Module just needs to set a severity for the change.
 - Observation - The main requests to actually get results / observations.
   We get the name of the repo, and we respond with relevant values when we are done cloning and processing it.
 
@@ -31,7 +33,7 @@ After reading a request from disk we can delete the request so we don't re-load 
 
 ## Architecture
 
-In modgithub.py we can maintain some globals to track the information we need.
+In `modgithub.py` we can maintain some globals to track the information we need.
 These can be dicts or queues.
 They need to be thread safe if accessed from multiple threads concurrently.
 
@@ -71,8 +73,10 @@ def handle_processed_repos():
     pass
 
 def clone_one_repo():
-    """Look through backlog for repos we need to clone / process, pick the oldest one download it.
-    This function is slow / blocking, but after it is done downloading from github, it starts a background job to do the rest of the processing.
+    """Look through backlog for repos we need to clone / process, pick the
+    oldest one download it. This function is slow / blocking, but after
+    it is done downloading from github, it starts a background job to do
+    the rest of the processing.
     """
     pass
 
@@ -100,6 +104,11 @@ def main():
 ## Limitations / considerations
 
 The current design will block "everything" when cloning one repo is very slow.
-In the future we could consider to move even more things (like handle_changes and handle_discovery) to separate threads.
+In the future we could consider to move even more things (like `handle_changes()` and `handle_discovery()`) to separate threads.
 
-`handle_discovery` is a little bit slow for the first time it runs with an org (to find all repos), this is okay.
+`handle_discovery()` is a little bit slow for the first time it runs with an org (to find all repos), this is okay.
+
+## Notes
+
+- We will remove the concept of a "slow" module and the separate downloader dockerfile and script.
+  "Everything" will happen inside the module.
