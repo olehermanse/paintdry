@@ -20,8 +20,8 @@ class ModuleRequest(dict):
         timestamp: int,
         source: str | None = None,
         attribute: str | None = None,
-        old_value: str | None = None,
-        new_value: str | None = None,
+        old_value: str | dict | list | None = None,
+        new_value: str | dict | list | None = None,
     ):
         dict.__init__(
             self,
@@ -44,6 +44,8 @@ class ModuleRequest(dict):
         for key in self:
             if key == "timestamp":
                 assert type(self[key]) is int
+            elif key in ("old_value", "new_value"):
+                assert type(self[key]) in (str, dict, list)
             else:
                 if not type(self[key]) is str:
                     print(f"Error: key '{key}' is not str; " + json.dumps(self))
@@ -68,10 +70,7 @@ class ModuleRequest(dict):
         assert type(self["attribute"]) is str
 
         assert "old_value" in self
-        assert type(self["old_value"]) is str
-
         assert "new_value" in self
-        assert type(self["new_value"]) is str
 
     def __setattr__(self, name: str, value: Any, /) -> None:
         if name not in self:
