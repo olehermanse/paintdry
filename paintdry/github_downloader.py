@@ -1,6 +1,7 @@
 import os
 import json
 import sys
+import threading
 import requests_cache
 from datetime import timedelta, datetime
 from time import sleep
@@ -98,11 +99,37 @@ def get_secrets(secrets_json):
     return secrets
 
 
+GITHUB_MODULE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "modules", "modgithub.py"
+)
+GITHUB_MODULE_BATCH_SIZE = 5
+
+
+def run_github_module(cache_folder, repos):
+    module_folder = os.path.join(cache_folder, "modules", "github")
+    requests_folder = os.path.join(module_folder, "requests")
+    responses_folder = os.path.join(module_folder, "responses")
+    mkdir(requests_folder)
+    mkdir(responses_folder)
+    repos = " ".join(f"'{repo}'" for repo in repos)
+    cmd(
+        f"python3 '{GITHUB_MODULE}' repo '{requests_folder}' '{responses_folder}' '{cache_folder}' {repos}"
+    )
+
+
+def start_github_module(cache_folder, repos):
+    threading.Thread(target=run_github_module, args=(cache_folder, repos)).start()
+
+
 def download_repos(secrets_json, root, cache_folder):
     secrets = get_secrets(secrets_json)
     username = secrets["github_username"]
     token = secrets["github_access_token"]
     organizations = secrets["github_organizations"]
+
+    github_module_found = os.path.isfile(GITHUB_MODULE)
+    if not github_module_found:
+        print(f"Warning: {GITHUB_MODULE} not found - not running it while downloading")
 
     github_session = GithubSession(token, cache_folder)
 
@@ -120,6 +147,7 @@ def download_repos(secrets_json, root, cache_folder):
     if not os.path.exists(trusted_path):
         trusted_path = None
     # assert trusted_path is not None, "Trusted path is not set"
+    downloaded = []
     for website, organizations in data.items():
         path = os.path.join(root, website)
         mkdir(path)
@@ -186,8 +214,6 @@ def download_repos(secrets_json, root, cache_folder):
                     sleep(1)
                     cmd(remove_remote_cmd, fail_ok=True)
 
-                # TODO: Checkout tags and branches and run trivy for each (after some filtering).
-
                 if not os.path.exists(default_branch_path):
                     # TODO handle empty repos
                     continue
@@ -237,6 +263,21 @@ def download_repos(secrets_json, root, cache_folder):
                 now = datetime.now()
                 with open(ts_path, "w") as f:
                     f.write(now.isoformat() + "\n")
+
+                # Repo is complete on disk, emit results for every batch of
+                # repos instead of waiting for all repos to be downloaded:
+                downloaded.append(f"{org}/{reponame}")
+
+                print(f"{len(downloaded)}/{GITHUB_MODULE_BATCH_SIZE}: downloaded '{downloaded[-1]}' repo")
+                if github_module_found and len(downloaded) >= GITHUB_MODULE_BATCH_SIZE:
+                    print("Starting github module in the background")
+                    start_github_module(cache_folder, list(downloaded))
+                    downloaded.clear()
+
+    # Last batch:
+    if github_module_found and downloaded:
+        print("Starting github module in the background")
+        start_github_module(cache_folder, downloaded)
 
 
 def main():

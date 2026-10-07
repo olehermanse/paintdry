@@ -129,8 +129,11 @@ class ModBase:
             for element in data:
                 results.extend(self.handle_request(element))
         assert type(results) is list
-        with open(output_file, "w") as f:
+        # Write atomically, the updater may pick up responses at any time:
+        tmp_file = Path(output_dir, name + ".tmp")
+        with open(tmp_file, "w") as f:
             f.write(json.dumps(results))
+        os.replace(tmp_file, output_file)
         input_file.unlink()
 
     def handle_files(self, input_dir, output_dir):
