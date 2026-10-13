@@ -1,10 +1,53 @@
 import datetime
+from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from collections.abc import Iterable
 from modlib import ModBase, strip_prefix, now, TAG_REGEX
+import fcntl
 import os
+import shutil
+import subprocess
 import sys
 import json
+import tempfile
+import time
+import requests
+
+# Don't try GitHub again until this long after rate limiting / server errors:
+ABORT_TIMEOUT = 3600
+# Repos pulled more recently than this are answered from disk without pulling:
+FRESH_TIMEOUT = 2 * 3600
+# Background jobs (tags, trivy) after a repo is cloned / pulled, these run
+# in parallel with cloning. Only 1, parallel trivy runs fight over the trivy
+# cache lock and fail:
+PROCESSING_THREADS = 1
+
+SECRETS_JSON = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "config", "secrets.json"
+)
+
+
+class GitHubAbort(Exception):
+    """Rate limiting or server error from GitHub, stop and try again later"""
+
+
+def abort_timestamp_path(cache_folder):
+    return os.path.join(cache_folder, "last_timestamp")
+
+
+def get_last_abort_timestamp(cache_folder):
+    """Return the epoch timestamp of the last abort, or None if there was none"""
+    try:
+        with open(abort_timestamp_path(cache_folder), "r") as f:
+            return int(f.read().strip())
+    except FileNotFoundError:
+        return None
+
+
+def write_abort_timestamp(cache_folder):
+    with open(abort_timestamp_path(cache_folder), "w") as f:
+        f.write(f"{now()}\n")
+
 
 @cache
 def normalize_github(url: str) -> str:
@@ -17,13 +60,170 @@ def normalize_github(url: str) -> str:
     return url
 
 
+def is_repo_observation(request: dict) -> bool:
+    return request["operation"] == "observation" and "/" in normalize_github(
+        request["resource"]
+    )
+
+
+def atomic_write(path, data):
+    dirname = os.path.dirname(os.path.abspath(path))
+    fd, tmp_path = tempfile.mkstemp(dir=dirname, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def cmd(command, token=None, fail_ok=False):
+    def mask(s):
+        return s.replace(token, "TOKEN") if token else s
+
+    print("CMD: " + mask(command))
+    r = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if r.stdout:
+        print(mask(r.stdout), end="")
+    if r.stderr:
+        print(mask(r.stderr), end="", file=sys.stderr)
+    if r.returncode != 0 and not fail_ok:
+        print(f"Warning: Command exited with code {r.returncode}")
+    return r
+
+
+def rm_rf(path):
+    if os.path.isdir(path) and not os.path.islink(path):
+        shutil.rmtree(path)
+    elif os.path.lexists(path):
+        os.remove(path)
+
+
+def trivy_scan(repo_path, branch_path):
+    """Generate a CycloneDX SBOM for branch_path, saved as <repo_path>/trivy.json"""
+    output = os.path.join(repo_path, "trivy.json")
+    tmp = output + ".tmp"
+    try:
+        result = subprocess.run(
+            ["trivy", "fs", "--quiet", "--format", "cyclonedx",
+             "--output", tmp, branch_path]
+        )
+    except FileNotFoundError:
+        print("Warning: trivy not found - skipping SBOM generation")
+        return
+    if result.returncode == 0:
+        os.rename(tmp, output)
+        return
+
+    print(f"Trivy scan failed for {repo_path}")
+    try:
+        os.remove(tmp)
+    except FileNotFoundError:
+        pass
+
+
+def write_tags(repo_path, branch_path):
+    tags = cmd(
+        f"sh -c 'cd {branch_path} && git show-ref --tags'",
+        fail_ok=True,
+    ).stdout
+    if not tags:
+        return
+    tag_data = {}
+    sha_length = len("d9028fceac74241e743fc4d1d832cb4662e976eb")
+    separator = " refs/tags/"
+    expected_length = sha_length + len(separator) + 1
+    for line in tags.split("\n"):
+        line = line.strip()
+        if not line or len(line) < expected_length:
+            continue
+        if not line[sha_length:].startswith(separator):
+            continue
+        tag = line[expected_length - 1 :]
+        sha = line[0:sha_length]
+        tag_data[tag] = sha
+    if tag_data:
+        with open(os.path.join(repo_path, "tags.json"), "w") as f:
+            f.write(json.dumps(tag_data, indent=2))
+
+
+def get_secrets(secrets_json):
+    """Return secrets dict, or None if there are no secrets (offline mode)"""
+    try:
+        st = os.stat(secrets_json)
+    except FileNotFoundError:
+        print("Warning: Secrets file missing - answering from disk only")
+        return None
+
+    oct_perm = str(oct(st.st_mode))[-3:]
+    if oct_perm != "600":
+        sys.exit(f"Permissions of {secrets_json} must be 600, not {oct_perm}")
+    with open(secrets_json, "r") as f:
+        secrets = json.loads(f.read())
+
+    if not isinstance(secrets, dict):
+        sys.exit(f"{secrets_json} must contain a JSON object")
+    for key in ("github_username", "github_access_token"):
+        if not secrets.get(key):
+            sys.exit(f"Missing secret: {key}")
+    return secrets
+
+
+class GithubSession:
+    def __init__(self, token):
+        # requests_cache.install_cache() (ModBase) makes this session cached
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "Authorization": f"token {token}",
+                "X-GitHub-Api-Version": "2022-11-28",
+            }
+        )
+
+    def get(self, url):
+        """Return parsed JSON, None for 404, raise GitHubAbort on rate limiting / errors"""
+        print("GET: " + url)
+        r = self.session.get(url)
+        if getattr(r, "from_cache", False):
+            print("CACHE HIT: " + url)
+        else:
+            # Go slowly, never more than 1 request per second:
+            time.sleep(1)
+        if r.status_code == 200:
+            return r.json()
+        print(f"{r.status_code}: {r.text}")
+        rate_limited = r.status_code == 429 or (
+            r.status_code == 403
+            and (
+                r.headers.get("x-ratelimit-remaining") == "0"
+                or "rate limit" in r.text.lower()
+            )
+        )
+        # 401 is a bad / expired token, everything would fail, stop too:
+        if rate_limited or r.status_code == 401 or r.status_code >= 500:
+            raise GitHubAbort(f"{r.status_code} from {url}")
+        # 404 or other 403 (e.g. no access to one repo), skip just this one:
+        return None
+
 class ModGitHub(ModBase):
+    def __init__(self):
+        super().__init__()
+        # Set up from secrets.json in handle_files(), None means offline
+        # (answer from what is already on disk):
+        self.session = None
+
     def repo_folder(self, resource: str) -> str:
-        # The downloader writes repos to <state folder>/repos/github.com/<org>/<repo>.
-        # The state folder is passed as the third argument (cache_folder) when
-        # run by the updater or the downloader, so this works regardless of
-        # the current working directory. Fall back to a relative path when
-        # run manually (stdin / example mode) from the repo root.
+        # Repos are stored in <state folder>/repos/github.com/<org>/<repo>.
+        # The state folder is passed as the third argument (cache_folder),
+        # so this works regardless of the current working directory. Fall
+        # back to a relative path when run manually (stdin / example mode)
+        # from the repo root.
         state = self.cache_folder or "mount-state/"
         return os.path.join(state, "repos", "github.com", resource)
 
@@ -47,9 +247,14 @@ class ModGitHub(ModBase):
     def discover_repos(self, request) -> Iterable[dict]:
         org = normalize_github(request["resource"])
         assert "/" not in org
+        if self.session is not None:
+            self.download_org_metadata(org)
         folder = self.repo_folder(org)
-        if not os.path.exists(folder):
+        org_metadata = folder + "/org-metadata.json"
+        if not os.path.isfile(org_metadata):
             return
+        with open(org_metadata, "r") as f:
+            org_metadata = json.loads(f.read())
         yield {
             "operation": "discovery",
             "resource": normalize_github(request["resource"]),
@@ -58,12 +263,12 @@ class ModGitHub(ModBase):
             "timestamp": request["timestamp"],
         }
 
-        for entry in os.scandir(folder):
-            if not entry.is_dir():
+        for name in org_metadata.get("repos", []):
+            if name in org_metadata.get("archived", []):
                 continue
-            resource = org + "/" + entry.name
-            if not os.path.exists(entry.path + "/metadata.json"):
+            if os.path.exists(os.path.join(folder, name, "archived")):
                 continue
+            resource = org + "/" + name
             yield {
                 "operation": "discovery",
                 "resource": resource,
@@ -266,28 +471,275 @@ class ModGitHub(ModBase):
             request["severity"] = "high"
         yield request
 
-    def handle_repos(self, repos: list[str], input_dir: str, output_dir: str):
-        repos = {normalize_github(repo) for repo in repos}
+    # Downloading from GitHub
+
+    def secrets_file(self):
+        return SECRETS_JSON
+
+    def setup_github(self, secret_file):
+        secrets = get_secrets(secret_file)
+        if secrets is None:
+            return
+        self.username = secrets["github_username"]
+        self.token = secrets["github_access_token"]
+        self.session = GithubSession(self.token)
+
+    def download_org_metadata(self, org):
+        """List all repos in an org and write org-metadata.json (slow first time)"""
+        repos = []
+        archived = []
+        for i in range(1, 10):
+            data = self.session.get(
+                f"https://api.github.com/orgs/{org}/repos?per_page=100&page={i}"
+            )
+            if not data:
+                break
+            for repo in data:
+                repos.append(repo["name"])
+                if repo["archived"]:
+                    archived.append(repo["name"])
+        folder = self.repo_folder(org)
+        os.makedirs(folder, exist_ok=True)
+        data = {"repos": sorted(repos), "archived": sorted(archived)}
+        with open(folder + "/org-metadata.json", "w") as f:
+            f.write(json.dumps(data, indent=2))
+            f.write("\n")
+
+    def read_last_updated(self, repo) -> int:
+        path = os.path.join(self.repo_folder(repo), "updated")
+        try:
+            with open(path, "r") as f:
+                ts = datetime.datetime.fromisoformat(f.read().strip())
+                return int(ts.timestamp())
+        except (FileNotFoundError, ValueError):
+            return 0  # Never updated (or corrupt), treat as oldest
+
+    def write_last_updated(self, repo):
+        path = os.path.join(self.repo_folder(repo), "updated")
+        # Atomic, the main thread may read it while we write it:
+        tmp = path + ".tmp"
+        with open(tmp, "w") as f:
+            f.write(datetime.datetime.now().isoformat() + "\n")
+        os.replace(tmp, path)
+
+    def mark_archived(self, repo):
+        path = self.repo_folder(repo)
+        rm_rf(f"{path}/branches")
+        rm_rf(f"{path}/metadata.json")
+        rm_rf(f"{path}/updated")
+        with open(f"{path}/archived", "w"):
+            pass
+
+    def clone_or_pull(self, repo):
+        """Download metadata and clone / pull the repo (slow, talks to GitHub).
+
+        Returns the path of the default branch checkout, or None if there is
+        nothing more to process (archived, empty, deleted or failed).
+        """
+        path = self.repo_folder(repo)
+        os.makedirs(path, exist_ok=True)
+
+        info = self.session.get(f"https://api.github.com/repos/{repo}")
+        if info is None:
+            return None
+        if info.get("archived"):
+            self.mark_archived(repo)
+            return None
+        rm_rf(f"{path}/archived")
+        if info.get("visibility") == "public":
+            rulesets = self.session.get(
+                f"https://api.github.com/repos/{repo}/rulesets?per_page=100&page=1"
+            )
+            if rulesets is not None:
+                info["rulesets"] = rulesets
+        with open(f"{path}/metadata.json", "w") as f:
+            f.write(json.dumps(info, indent=2))
+
+        branch = info["default_branch"]
+        branch_path = os.path.join(path, "branches", branch)
+        os.makedirs(os.path.join(path, "branches"), exist_ok=True)
+        url = f"https://{self.username}:{self.token}@github.com/{repo}.git"
+        # Remove the remote after each operation, so the token isn't stored on disk:
+        remove_remote = f"sh -c 'cd {branch_path} && git remote | grep -q origin && git remote remove origin'"
+        add_remote = f"sh -c 'cd {branch_path} && git remote add origin {url}'"
+        if not os.path.exists(branch_path):
+            cmd(
+                f"git clone --recurse-submodules --single-branch --shallow-submodules -b {branch} {url} {branch_path}",
+                token=self.token,
+            )
+            cmd(remove_remote, fail_ok=True)
+        else:
+            cmd(remove_remote, fail_ok=True)
+            cmd(add_remote, token=self.token)
+            # Not git pull, it doesn't get new tags and fails on force pushes:
+            fetch = cmd(
+                f"sh -c 'cd {branch_path} && git fetch --force --tags origin {branch}'",
+                token=self.token,
+            )
+            if fetch.returncode == 0:
+                cmd(f"sh -c 'cd {branch_path} && git reset -q --hard FETCH_HEAD'")
+            cmd(remove_remote, fail_ok=True)
+
+        if not os.path.exists(branch_path):
+            # Empty repo or failed clone, metadata is still useful:
+            self.write_last_updated(repo)
+            return None
+
+        is_shallow = cmd(
+            f"sh -c 'cd {branch_path} && git rev-parse --is-shallow-repository'"
+        ).stdout.strip()
+        if is_shallow == "true":
+            cmd(remove_remote, fail_ok=True)
+            cmd(add_remote, token=self.token)
+            cmd(f"sh -c 'cd {branch_path} && git fetch --unshallow'", token=self.token)
+            cmd(remove_remote, fail_ok=True)
+        return branch_path
+
+    def process_repo(self, repo, branch_path):
+        """Background job after clone / pull, local only (no GitHub requests)"""
+        path = self.repo_folder(repo)
+        try:
+            write_tags(path, branch_path)
+            trivy_scan(path, branch_path)
+            self.write_last_updated(repo)
+        except Exception as e:
+            print(f"Processing {repo} failed: {e}")
+
+    # Request backlog
+
+    def get_new_request_backlog(self, input_dir):
+        """Read requests from folder, put them in backlog and delete files"""
         with os.scandir(input_dir) as it:
             names = [e.name for e in it if e.is_file() and e.name.endswith(".json")]
         for name in names:
+            input_file = os.path.join(input_dir, name)
             try:
-                with open(os.path.join(input_dir, name), "r") as f:
+                with open(input_file, "r") as f:
                     data = json.loads(f.read())
-            except FileNotFoundError:
-                # already deleted
-                continue
+            except json.JSONDecodeError as e:
+                # Delete it anyway, otherwise we'd crash on it every run:
+                print(f"Skipping malformed request file {name}: {e}")
+                data = []
             if type(data) is dict:
                 data = [data]
-            if data and all(normalize_github(r["resource"]) in repos for r in data):
-                self.handle_single_file(input_dir, name, output_dir)
+            self.request_backlog.extend(data)
+            os.remove(input_file)
+
+    def save_response(self, output_dir, results):
+        if not results:
+            return
+        # pid, so 2 runs in the same second can't overwrite each other's files:
+        filename = os.path.join(output_dir, f"{now()}-{os.getpid()}-{self.counter}.json")
+        self.counter += 1
+        atomic_write(filename, results)
+
+    def is_ready(self, request) -> bool:
+        """Repo observations wait until the repo is pulled and processed, the rest are ready"""
+        if not is_repo_observation(request):
+            return True
+        repo = normalize_github(request["resource"])
+        if repo in self.processing:
+            future = self.processing[repo]
+            return future is None or future.done()
+        # Not pulled in this run, answer from disk if offline or recently pulled:
+        return self.session is None or now() - self.read_last_updated(repo) < FRESH_TIMEOUT
+
+    def handle_ready_requests(self, output_dir):
+        """Answer and remove all requests in backlog which are ready"""
+        remaining = []
+        results = []
+        # Discovery first, it may update org-metadata.json for org observations:
+        for request in sorted(self.request_backlog, key=lambda r: r["operation"] != "discovery"):
+            if self.is_ready(request):
+                try:
+                    results.extend(self.handle_request(request))
+                except Exception as e:
+                    # Drop it, bad data on disk shouldn't stop all other requests:
+                    print(f"Failed to handle {request}: {e!r}")
+            else:
+                remaining.append(request)
+        self.request_backlog = remaining
+        self.save_response(output_dir, results)
+
+    def pick_next_repo(self):
+        repos = {}
+        for request in self.request_backlog:
+            if not is_repo_observation(request):
+                continue
+            repo = normalize_github(request["resource"])
+            if repo in self.processing:
+                continue
+            repos[repo] = self.read_last_updated(repo)
+        return min(repos, key=repos.get, default=None)
+
+    def clone_one_repo(self):
+        """Pick the repo with the oldest data from the backlog and download it.
+        This function is slow / blocking, but after it is done downloading from
+        GitHub, it starts a background job to do the rest of the processing.
+        """
+        repo = self.pick_next_repo()
+        if repo is None:
+            return
+        self.processing[repo] = None  # Started, so we don't pick it again
+        branch_path = self.clone_or_pull(repo)
+        if branch_path is not None:
+            self.processing[repo] = self.executor.submit(
+                self.process_repo, repo, branch_path
+            )
+
+    # override
+    def handle_files(self, input_dir, output_dir):
+        assert os.path.isdir(input_dir)
+        assert os.path.isdir(output_dir)
+
+        # The updater starts us every cycle, also while a long run is still
+        # going, only one instance should run. New requests wait for the
+        # next run. The lock is released when the process exits (also on
+        # crash):
+        self.lock = open(os.path.join(self.cache_folder, "github.lock"), "w")
+        try:
+            fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print("Another GitHub module run is in progress")
+            return
+
+        last_abort = get_last_abort_timestamp(self.cache_folder)
+        if last_abort is not None and now() - last_abort < ABORT_TIMEOUT:
+            print("Sleeping to avoid unnecessary polling after error / rate limiting")
+            return
+
+        self.request_backlog = []
+        # Repos we have cloned / pulled in this run, repo -> Future of the
+        # background processing (None if there was nothing to process):
+        self.processing = {}
+        self.counter = 0
+
+        self.get_new_request_backlog(input_dir)
+        if not self.request_backlog:
+            return
+        self.setup_github(self.secrets_file())
+
+        self.executor = ThreadPoolExecutor(max_workers=PROCESSING_THREADS)
+        try:
+            while self.request_backlog:
+                self.handle_ready_requests(output_dir)
+                self.clone_one_repo()
+                self.handle_ready_requests(output_dir)
+                if self.request_backlog:
+                    time.sleep(1)
+        except GitHubAbort as e:
+            print(f"Stopping, will not try again for {ABORT_TIMEOUT}s: {e}")
+            # Drop the remaining requests, what we already downloaded is
+            # on disk and will be answered without pulling in the next run:
+            write_abort_timestamp(self.cache_folder)
+        finally:
+            self.executor.shutdown(wait=True)
+
+
+def main():
+    mod = ModGitHub()
+    mod.main()
 
 
 if __name__ == "__main__":
-    module = ModGitHub()
-    # python3 modgithub.py repo <requests_dir> <responses_dir> <state_dir> <org/repo>...
-    if len(sys.argv) >= 6 and sys.argv[1] == "repo":
-        module.cache_folder = sys.argv[4]
-        module.handle_repos(sys.argv[5:], sys.argv[2], sys.argv[3])
-    else:
-        module.main()
+    main()

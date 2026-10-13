@@ -127,6 +127,13 @@ class Module:
     def process_all_responses(self, callback):
         if self.slow:
             self.process_responses(callback)
+            # Start it once per update cycle, when all requests are written.
+            # It runs in the background for as long as it needs, we don't
+            # wait for it, responses are picked up in later update cycles.
+            # The module itself must make sure only one instance runs at a
+            # time:
+            if self._has_pending_requests():
+                Popen(self._command, shell=True, start_new_session=True)
             return
         self._wait_process()  # Finish current process
         self.start()  # Start new one if more requests
@@ -135,6 +142,7 @@ class Module:
 
     def _start_process(self):
         if self.slow:
+            # Started in process_all_responses() instead, once per cycle
             return
         self._wait_process()
         self._process = Popen(
