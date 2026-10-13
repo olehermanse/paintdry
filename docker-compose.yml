@@ -32,6 +32,8 @@ services:
     build:
       context: .
       dockerfile: dockerfiles/updater.Dockerfile
+    # Reap background modules (github) which outlive the update that started them:
+    init: true
     volumes:
       - ./mount-state:/paintdry/mount-state
     environment:
@@ -41,9 +43,3 @@ services:
       - PGPASSWORD=postgres
     depends_on:
       - postgres
-  downloader:
-    build:
-      context: .
-      dockerfile: dockerfiles/downloader.Dockerfile
-    volumes:
-      - ./mount-state:/paintdry/mount-state
