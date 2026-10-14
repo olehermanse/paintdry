@@ -1,4 +1,5 @@
 import os
+import fcntl
 import sys
 import json
 import datetime
@@ -130,10 +131,22 @@ class Module:
             # Start it once per update cycle, when all requests are written.
             # It runs in the background for as long as it needs, we don't
             # wait for it, responses are picked up in later update cycles.
-            # The module itself must make sure only one instance runs at a
-            # time:
+            # Only one instance should run, it can outlive this update cycle
+            # (process), so the locked file is passed on to the module. The
+            # lock is released when the module exits (also on crash):
             if self._has_pending_requests():
-                Popen(self._command, shell=True, start_new_session=True)
+                lock = open(f"{self._module_folder}/running.lock", "w")
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    Popen(
+                        self._command,
+                        shell=True,
+                        start_new_session=True,
+                        pass_fds=[lock.fileno()],
+                    )
+                except BlockingIOError:
+                    print(f"Module {self.name} is still running from a previous cycle")
+                lock.close()
             return
         self._wait_process()  # Finish current process
         self.start()  # Start new one if more requests

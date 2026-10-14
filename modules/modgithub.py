@@ -3,7 +3,6 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from collections.abc import Iterable
 from modlib import ModBase, strip_prefix, now, TAG_REGEX
-import fcntl
 import os
 import shutil
 import subprocess
@@ -13,14 +12,16 @@ import tempfile
 import time
 import requests
 
+HOUR = 60 * 60
 # Don't try GitHub again until this long after rate limiting / server errors:
-ABORT_TIMEOUT = 3600
+ABORT_TIMEOUT = 1 * HOUR
 # Repos pulled more recently than this are answered from disk without pulling:
-FRESH_TIMEOUT = 2 * 3600
+FRESH_TIMEOUT = 2 * HOUR
 # Background jobs (tags, trivy) after a repo is cloned / pulled, these run
 # in parallel with cloning. Only 1, parallel trivy runs fight over the trivy
 # cache lock and fail:
 PROCESSING_THREADS = 1
+SHA_LENGTH = len("d9028fceac74241e743fc4d1d832cb4662e976eb")
 
 SECRETS_JSON = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "config", "secrets.json"
@@ -136,17 +137,16 @@ def write_tags(repo_path, branch_path):
     if not tags:
         return
     tag_data = {}
-    sha_length = len("d9028fceac74241e743fc4d1d832cb4662e976eb")
     separator = " refs/tags/"
-    expected_length = sha_length + len(separator) + 1
+    expected_length = SHA_LENGTH + len(separator) + 1
     for line in tags.split("\n"):
         line = line.strip()
         if not line or len(line) < expected_length:
             continue
-        if not line[sha_length:].startswith(separator):
+        if not line[SHA_LENGTH:].startswith(separator):
             continue
         tag = line[expected_length - 1 :]
-        sha = line[0:sha_length]
+        sha = line[0:SHA_LENGTH]
         tag_data[tag] = sha
     if tag_data:
         with open(os.path.join(repo_path, "tags.json"), "w") as f:
@@ -691,17 +691,6 @@ class ModGitHub(ModBase):
     def handle_files(self, input_dir, output_dir):
         assert os.path.isdir(input_dir)
         assert os.path.isdir(output_dir)
-
-        # The updater starts us every cycle, also while a long run is still
-        # going, only one instance should run. New requests wait for the
-        # next run. The lock is released when the process exits (also on
-        # crash):
-        self.lock = open(os.path.join(self.cache_folder, "github.lock"), "w")
-        try:
-            fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            print("Another GitHub module run is in progress")
-            return
 
         last_abort = get_last_abort_timestamp(self.cache_folder)
         if last_abort is not None and now() - last_abort < ABORT_TIMEOUT:
