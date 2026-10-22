@@ -4,6 +4,8 @@ import Layout from "./Layout";
 import ConfigView from "./ConfigView";
 import SingleJsonView from "./SingleJsonView";
 import SearchView from "./SearchView";
+import SbomView from "./SbomView";
+import SbomJsonView from "./SbomJsonView";
 
 function App() {
   return (
@@ -108,6 +110,8 @@ function App() {
           />
           <Route path="/ui/config" element={<ConfigView />} />
           <Route path="/ui/search" element={<SearchView />} />
+          <Route path="/ui/sboms" element={<SbomView />} />
+          <Route path="/ui/sboms/:id" element={<SbomJsonView />} />
           <Route path="*" element={<div> Page not found... </div>} />
         </Route>
       </Routes>
