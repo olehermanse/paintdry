@@ -2,7 +2,7 @@ import datetime
 from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from collections.abc import Iterable
-from modlib import ModBase, strip_prefix, now, TAG_REGEX
+from modlib import ModBase, strip_prefix, now
 import os
 import re
 import shutil
@@ -22,12 +22,12 @@ FRESH_TIMEOUT = 2 * HOUR
 # in parallel with cloning. Only 1, parallel trivy runs fight over the trivy
 # cache lock and fail:
 PROCESSING_THREADS = 1
+SHA_LENGTH = len("d9028fceac74241e743fc4d1d832cb4662e976eb")
 # Tags / branches we generate SBOMs for (the default branch is always included),
 # e.g. main, production, v1, v1.2, v1.2.3-1, 3.27.x:
 SBOM_REF_REGEX = re.compile(
     r"master|main|production|staging|v?\d+(\.\d+){0,2}(\.x)?(-\d+)?"
 )
-SHA_LENGTH = len("d9028fceac74241e743fc4d1d832cb4662e976eb")
 
 SECRETS_JSON = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "config", "secrets.json"
@@ -170,8 +170,6 @@ def write_tags(repo_path, branch_path):
         f"sh -c 'cd {branch_path} && git show-ref --tags'",
         fail_ok=True,
     ).stdout
-    if not tags:
-        return
     tag_data = {}
     separator = " refs/tags/"
     expected_length = SHA_LENGTH + len(separator) + 1
@@ -184,9 +182,9 @@ def write_tags(repo_path, branch_path):
         tag = line[expected_length - 1 :]
         sha = line[0:SHA_LENGTH]
         tag_data[tag] = sha
-    if tag_data:
-        with open(os.path.join(repo_path, "tags.json"), "w") as f:
-            f.write(json.dumps(tag_data, indent=2))
+    # Also when empty, so deleting the last tags is noticed:
+    with open(os.path.join(repo_path, "tags.json"), "w") as f:
+        f.write(json.dumps(tag_data, indent=2))
 
 
 def get_secrets(secrets_json):
@@ -456,18 +454,36 @@ class ModGitHub(ModBase):
         if os.path.isfile(tag_data):
             with open(tag_data, "r") as f:
                 tag_data = json.loads(f.read())
-                for tag, sha in tag_data.items():
-                    if not TAG_REGEX.fullmatch(tag):
-                        continue
-                    yield {
-                        "operation": "observation",
-                        "resource": repo,
-                        "module": "github",
-                        "attribute": "tag:" + tag,
-                        "value": sha,
-                        "timestamp": now(),
-                        "severity": "none",
-                    }
+            # All tags, not only versions, see change() for the severities:
+            yield {
+                "operation": "observation",
+                "resource": repo,
+                "module": "github",
+                "attribute": "tags",
+                "value": json.dumps(sorted(tag_data)),
+                "timestamp": now(),
+                "severity": "none",
+            }
+            for tag, sha in tag_data.items():
+                yield {
+                    "operation": "observation",
+                    "resource": repo,
+                    "module": "github",
+                    "attribute": "tag:" + tag,
+                    "value": sha,
+                    "timestamp": now(),
+                    "severity": "none",
+                }
+        if "releases" in data:
+            yield {
+                "operation": "observation",
+                "resource": repo,
+                "module": "github",
+                "attribute": "releases",
+                "value": json.dumps(data["releases"]),
+                "timestamp": timestamp,
+                "severity": "none",
+            }
 
         for ref, path in list_sboms(folder):
             with open(path, "r") as f:
@@ -503,9 +519,17 @@ class ModGitHub(ModBase):
 
     def change(self, request: dict) -> Iterable[dict]:
         assert request["old_value"] != request["new_value"]
+        attribute = request["attribute"]
         request["severity"] = "none"
-        if request["attribute"] == "visibility":
+        # Tags shouldn't move, someone with access could point them to
+        # malicious commits:
+        if attribute == "visibility" or attribute.startswith("tag:"):
             request["severity"] = "high"
+        elif attribute in ("tags", "releases"):
+            # New ones are expected, deleted ones are not (also if as many
+            # were created, so not just comparing lengths):
+            deleted = set(request["old_value"]) - set(request["new_value"])
+            request["severity"] = "high" if deleted else "notice"
         yield request
 
     # Downloading from GitHub
@@ -589,6 +613,20 @@ class ModGitHub(ModBase):
             )
             if rulesets is not None:
                 info["rulesets"] = rulesets
+        releases = []
+        for page in range(1, 10):
+            data = self.session.get(
+                f"https://api.github.com/repos/{repo}/releases?per_page=100&page={page}"
+            )
+            if data is None:
+                # Incomplete, would look like deleted releases:
+                releases = None
+                break
+            releases += [r["tag_name"] for r in data if not r["draft"]]
+            if len(data) < 100:
+                break
+        if releases is not None:
+            info["releases"] = sorted(releases)
         with open(f"{path}/metadata.json", "w") as f:
             f.write(json.dumps(info, indent=2))
 
@@ -617,9 +655,11 @@ class ModGitHub(ModBase):
         cmd(add_remote, token=self.token)
         try:
             if not cloned:
-                # Not git pull, it doesn't get new tags and
+                # Not git pull, it doesn't get new tags and fails on force
+                # pushes. Moves and deletes (--prune) tags, so it's noticed,
+                # --prune-tags doesn't work when the branch is given:
                 fetch = cmd(
-                    f"sh -c 'cd {branch_path} && git fetch -'",
+                    f"sh -c 'cd {branch_path} && git fetch --force --prune origin {branch} \"+refs/tags/*:refs/tags/*\"'",
                     token=self.token,
                 )
                 if fetch.returncode == 0:
