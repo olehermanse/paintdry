@@ -129,13 +129,20 @@ def trivy_scan(path):
     return json.loads(result.stdout)
 
 
+def list_sboms(repo_path):
+    """Yield (<branches|tags>/<name>, path) for each SBOM in <repo_path>/sboms"""
+    sboms = os.path.join(repo_path, "sboms")
+    for root, _, files in os.walk(sboms):
+        if "sbom.json" in files:
+            yield os.path.relpath(root, sboms), os.path.join(root, "sbom.json")
+
+
 def write_sboms(repo_path, branch_path):
     """Check out each tag / branch in <repo_path>/sbom_target.json, and save
-    their SBOMs in <repo_path>/sboms.json, {"branches": {name: sbom}, "tags": ...}"""
+    their SBOMs in <repo_path>/sboms/<branches|tags>/<name>/sbom.json"""
     with open(os.path.join(repo_path, "sbom_target.json"), "r") as f:
         targets = json.loads(f.read())
     branch = os.path.relpath(branch_path, os.path.join(repo_path, "branches"))
-    sboms = {kind: {} for kind in targets}
     try:
         for kind, refs in targets.items():
             for name, sha in refs.items():
@@ -144,11 +151,18 @@ def write_sboms(repo_path, branch_path):
                     continue
                 sbom = trivy_scan(branch_path)
                 if sbom:
-                    sboms[kind][name] = sbom
+                    output = os.path.join(repo_path, "sboms", kind, name, "sbom.json")
+                    os.makedirs(os.path.dirname(output), exist_ok=True)
+                    atomic_write(output, sbom)
     finally:
         # -B also fixes the branch if a crash left HEAD detached (pull resets HEAD):
         cmd(f"sh -c 'cd {branch_path} && git checkout -qf -B {branch} {targets['branches'][branch]}'")
-    atomic_write(os.path.join(repo_path, "sboms.json"), sboms)
+    # Tags / branches which are gone (or no longer match SBOM_REF_REGEX):
+    wanted = {f"{kind}/{name}" for kind, refs in targets.items() for name in refs}
+    # list(), so we don't delete folders while os.walk() is in them:
+    for ref, path in list(list_sboms(repo_path)):
+        if ref not in wanted:
+            rm_rf(os.path.dirname(path))
 
 
 def write_tags(repo_path, branch_path):
@@ -455,33 +469,30 @@ class ModGitHub(ModBase):
                         "severity": "none",
                     }
 
-        sboms = folder + "/sboms.json"
-        if os.path.isfile(sboms):
-            with open(sboms, "r") as f:
-                sboms = json.loads(f.read())
-            for kind, refs in sboms.items():
-                for ref, sbom in refs.items():
-                    # Same package can appear in multiple lockfiles, collect all versions
-                    dependencies = {}
-                    for component in sbom.get("components", []):
-                        purl = component.get("purl")
-                        if not purl:
-                            # E.g. the lockfile itself (type "application")
-                            continue
-                        name = purl.split("@")[0]
-                        dependencies.setdefault(name, set()).add(component.get("version", ""))
-                    for name, versions in dependencies.items():
-                        yield {
-                            "operation": "observation",
-                            "resource": repo,
-                            "module": "github",
-                            # E.g. dependency:tags/v1.2.3:pkg:npm/lodash, git
-                            # doesn't allow ":" in ref names:
-                            "attribute": f"dependency:{kind}/{ref}:{name}",
-                            "value": json.dumps(sorted(versions)),
-                            "timestamp": timestamp,
-                            "severity": "none",
-                        }
+        for ref, path in list_sboms(folder):
+            with open(path, "r") as f:
+                sbom = json.loads(f.read())
+            # Same package can appear in multiple lockfiles, collect all versions
+            dependencies = {}
+            for component in sbom.get("components", []):
+                purl = component.get("purl")
+                if not purl:
+                    # E.g. the lockfile itself (type "application")
+                    continue
+                name = purl.split("@")[0]
+                dependencies.setdefault(name, set()).add(component.get("version", ""))
+            for name, versions in dependencies.items():
+                yield {
+                    "operation": "observation",
+                    "resource": repo,
+                    "module": "github",
+                    # E.g. dependency:tags/v1.2.3:pkg:npm/lodash, git
+                    # doesn't allow ":" in ref names:
+                    "attribute": f"dependency:{ref}:{name}",
+                    "value": json.dumps(sorted(versions)),
+                    "timestamp": timestamp,
+                    "severity": "none",
+                }
 
     def observation(self, request: dict) -> Iterable[dict]:
         resource = normalize_github(request["resource"])
