@@ -4,6 +4,7 @@ from functools import cache
 from collections.abc import Iterable
 from modlib import ModBase, strip_prefix, now, TAG_REGEX
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,11 @@ FRESH_TIMEOUT = 2 * HOUR
 # in parallel with cloning. Only 1, parallel trivy runs fight over the trivy
 # cache lock and fail:
 PROCESSING_THREADS = 1
+# Tags / branches we generate SBOMs for (the default branch is always included),
+# e.g. main, production, v1, v1.2, v1.2.3-1, 3.27.x:
+SBOM_REF_REGEX = re.compile(
+    r"master|main|production|staging|v?\d+(\.\d+){0,2}(\.x)?(-\d+)?"
+)
 SHA_LENGTH = len("d9028fceac74241e743fc4d1d832cb4662e976eb")
 
 SECRETS_JSON = os.path.join(
@@ -106,27 +112,57 @@ def rm_rf(path):
         os.remove(path)
 
 
-def trivy_scan(repo_path, branch_path):
-    """Generate a CycloneDX SBOM for branch_path, saved as <repo_path>/trivy.json"""
-    output = os.path.join(repo_path, "trivy.json")
-    tmp = output + ".tmp"
+def trivy_scan(path):
+    """Return a CycloneDX SBOM (dict) for the files in path, or None"""
     try:
         result = subprocess.run(
-            ["trivy", "fs", "--quiet", "--format", "cyclonedx",
-             "--output", tmp, branch_path]
+            ["trivy", "fs", "--quiet", "--format", "cyclonedx", path],
+            capture_output=True,
+            text=True,
         )
     except FileNotFoundError:
         print("Warning: trivy not found - skipping SBOM generation")
-        return
-    if result.returncode == 0:
-        os.rename(tmp, output)
-        return
+        return None
+    if result.returncode != 0:
+        print(f"Trivy scan failed for {path}: {result.stderr}")
+        return None
+    return json.loads(result.stdout)
 
-    print(f"Trivy scan failed for {repo_path}")
+
+def list_sboms(repo_path):
+    """Yield (<branches|tags>/<name>, path) for each SBOM in <repo_path>/sboms"""
+    sboms = os.path.join(repo_path, "sboms")
+    for root, _, files in os.walk(sboms):
+        if "sbom.json" in files:
+            yield os.path.relpath(root, sboms), os.path.join(root, "sbom.json")
+
+
+def write_sboms(repo_path, branch_path):
+    """Check out each tag / branch in <repo_path>/sbom_target.json, and save
+    their SBOMs in <repo_path>/sboms/<branches|tags>/<name>/sbom.json"""
+    with open(os.path.join(repo_path, "sbom_target.json"), "r") as f:
+        targets = json.loads(f.read())
+    branch = os.path.relpath(branch_path, os.path.join(repo_path, "branches"))
     try:
-        os.remove(tmp)
-    except FileNotFoundError:
-        pass
+        for kind, refs in targets.items():
+            for name, sha in refs.items():
+                # Fails if the fetch of sha failed, skip it:
+                if cmd(f"sh -c 'cd {branch_path} && git checkout -qf {sha}'").returncode:
+                    continue
+                sbom = trivy_scan(branch_path)
+                if sbom:
+                    output = os.path.join(repo_path, "sboms", kind, name, "sbom.json")
+                    os.makedirs(os.path.dirname(output), exist_ok=True)
+                    atomic_write(output, sbom)
+    finally:
+        # -B also fixes the branch if a crash left HEAD detached (pull resets HEAD):
+        cmd(f"sh -c 'cd {branch_path} && git checkout -qf -B {branch} {targets['branches'][branch]}'")
+    # Tags / branches which are gone (or no longer match SBOM_REF_REGEX):
+    wanted = {f"{kind}/{name}" for kind, refs in targets.items() for name in refs}
+    # list(), so we don't delete folders while os.walk() is in them:
+    for ref, path in list(list_sboms(repo_path)):
+        if ref not in wanted:
+            rm_rf(os.path.dirname(path))
 
 
 def write_tags(repo_path, branch_path):
@@ -433,13 +469,12 @@ class ModGitHub(ModBase):
                         "severity": "none",
                     }
 
-        sbom_data = folder + "/trivy.json"
-        if os.path.isfile(sbom_data):
-            with open(sbom_data, "r") as f:
-                sbom_data = json.loads(f.read())
+        for ref, path in list_sboms(folder):
+            with open(path, "r") as f:
+                sbom = json.loads(f.read())
             # Same package can appear in multiple lockfiles, collect all versions
             dependencies = {}
-            for component in sbom_data.get("components", []):
+            for component in sbom.get("components", []):
                 purl = component.get("purl")
                 if not purl:
                     # E.g. the lockfile itself (type "application")
@@ -451,7 +486,9 @@ class ModGitHub(ModBase):
                     "operation": "observation",
                     "resource": repo,
                     "module": "github",
-                    "attribute": "dependency:" + name,
+                    # E.g. dependency:tags/v1.2.3:pkg:npm/lodash, git
+                    # doesn't allow ":" in ref names:
+                    "attribute": f"dependency:{ref}:{name}",
                     "value": json.dumps(sorted(versions)),
                     "timestamp": timestamp,
                     "severity": "none",
@@ -559,48 +596,78 @@ class ModGitHub(ModBase):
         branch_path = os.path.join(path, "branches", branch)
         os.makedirs(os.path.join(path, "branches"), exist_ok=True)
         url = f"https://{self.username}:{self.token}@github.com/{repo}.git"
-        # Remove the remote after each operation, so the token isn't stored on disk:
+        # Remove the remote after we're done, so the token isn't stored on disk:
         remove_remote = f"sh -c 'cd {branch_path} && git remote | grep -q origin && git remote remove origin'"
         add_remote = f"sh -c 'cd {branch_path} && git remote add origin {url}'"
+        cloned = False
         if not os.path.exists(branch_path):
             cmd(
                 f"git clone --recurse-submodules --single-branch --shallow-submodules -b {branch} {url} {branch_path}",
                 token=self.token,
             )
-            cmd(remove_remote, fail_ok=True)
-        else:
-            cmd(remove_remote, fail_ok=True)
-            cmd(add_remote, token=self.token)
-            # Not git pull, it doesn't get new tags and fails on force pushes:
-            fetch = cmd(
-                f"sh -c 'cd {branch_path} && git fetch --force --tags origin {branch}'",
-                token=self.token,
-            )
-            if fetch.returncode == 0:
-                cmd(f"sh -c 'cd {branch_path} && git reset -q --hard FETCH_HEAD'")
-            cmd(remove_remote, fail_ok=True)
+            cloned = True
 
         if not os.path.exists(branch_path):
             # Empty repo or failed clone, metadata is still useful:
             self.write_last_updated(repo)
             return None
 
-        is_shallow = cmd(
-            f"sh -c 'cd {branch_path} && git rev-parse --is-shallow-repository'"
-        ).stdout.strip()
-        if is_shallow == "true":
-            cmd(remove_remote, fail_ok=True)
-            cmd(add_remote, token=self.token)
-            cmd(f"sh -c 'cd {branch_path} && git fetch --unshallow'", token=self.token)
+        # Remove first, git clone adds origin and a crashed run may have left it:
+        cmd(remove_remote, fail_ok=True)
+        cmd(add_remote, token=self.token)
+        try:
+            if not cloned:
+                # Not git pull, it doesn't get new tags and
+                fetch = cmd(
+                    f"sh -c 'cd {branch_path} && git fetch -'",
+                    token=self.token,
+                )
+                if fetch.returncode == 0:
+                    cmd(f"sh -c 'cd {branch_path} && git reset -q --hard FETCH_HEAD'")
+            is_shallow = cmd(
+                f"sh -c 'cd {branch_path} && git rev-parse --is-shallow-repository'"
+            ).stdout.strip()
+            if is_shallow == "true":
+                cmd(f"sh -c 'cd {branch_path} && git fetch --unshallow'", token=self.token)
+            # After the reset, it records HEAD as the default branch's sha:
+            self.fetch_sbom_targets(repo, branch_path, branch)
+        finally:
             cmd(remove_remote, fail_ok=True)
         return branch_path
+
+    def fetch_sbom_targets(self, repo, branch_path, branch):
+        """Fetch the tags / branches matching SBOM_REF_REGEX (clone is single
+        branch), and save them and the default branch in
+        <repo>/sbom_target.json. The origin remote must be added."""
+        refs = cmd(
+            f"sh -c 'cd {branch_path} && git ls-remote --heads --tags origin'",
+            token=self.token,
+        ).stdout
+        targets = {"branches": {}, "tags": {}}
+        refspecs = []
+        for line in refs.splitlines():
+            sha, _, ref = line.partition("\t")
+            _, kind, name = ref.split("/", 2)
+            # Also skips the peeled annotated tags, <tag>^{}:
+            if SBOM_REF_REGEX.fullmatch(name):
+                targets["branches" if kind == "heads" else "tags"][name] = sha
+                # Not into refs/remotes/origin/, those are deleted with the remote:
+                refspecs.append(f"+{ref}:refs/sbom/{kind}/{name}")
+        if refspecs:
+            cmd(
+                f"sh -c 'cd {branch_path} && git fetch -q --no-tags origin {' '.join(refspecs)}'",
+                token=self.token,
+            )
+        head = cmd(f"sh -c 'cd {branch_path} && git rev-parse HEAD'").stdout.strip()
+        targets["branches"][branch] = head
+        atomic_write(os.path.join(self.repo_folder(repo), "sbom_target.json"), targets)
 
     def process_repo(self, repo, branch_path):
         """Background job after clone / pull, local only (no GitHub requests)"""
         path = self.repo_folder(repo)
         try:
             write_tags(path, branch_path)
-            trivy_scan(path, branch_path)
+            write_sboms(path, branch_path)
             self.write_last_updated(repo)
         except Exception as e:
             print(f"Processing {repo} failed: {e}")
