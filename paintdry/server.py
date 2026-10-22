@@ -1,12 +1,20 @@
+import datetime
+import glob
+import io
 import json
+import os
+import tarfile
 
-from flask import Flask, abort, send_from_directory, request
+from flask import Flask, abort, send_file, send_from_directory, request
 from flask.helpers import redirect
+from werkzeug.security import safe_join
 
 from paintdry.database import Database
 from paintdry.lib import get_config_filename
 
 database = Database()
+# modgithub's repos in the updater's state folder (mounted in docker-compose.yml):
+SBOM_REPOS = os.path.abspath("mount-state/repos/github.com")
 
 app = Flask(__name__)
 
@@ -68,6 +76,56 @@ def api_get_changes(id):
     if not result:
         abort(404)
     return result[0]
+
+
+@app.route("/api/sboms")
+def api_sboms():
+    sboms = []
+    pattern = os.path.join(SBOM_REPOS, "*", "*", "sboms", "*", "**", "sbom.json")
+    for path in sorted(glob.glob(pattern, recursive=True)):
+        folder = os.path.relpath(os.path.dirname(path), SBOM_REPOS)
+        org, repo, _, kind, name = folder.split("/", 4)
+        mtime = os.path.getmtime(path)
+        sboms.append(
+            {
+                "id": f"{org}/{repo}/{kind}/{name}",
+                "org": org,
+                "repo": repo,
+                "type": {"branches": "branch", "tags": "tag"}.get(kind, kind),
+                "name": name,
+                # ISO, so it sorts:
+                "scanned": datetime.datetime.fromtimestamp(
+                    mtime, datetime.timezone.utc
+                ).isoformat(),
+            }
+        )
+    return sboms
+
+
+@app.route("/api/sboms/<org>/<repo>/<kind>/<path:name>")
+def api_get_sbom(org, repo, kind, name):
+    # send_from_directory() 404s on missing files and paths escaping SBOM_REPOS:
+    return send_from_directory(
+        SBOM_REPOS,
+        os.path.join(org, repo, "sboms", kind, name, "sbom.json"),
+        as_attachment=True,
+        download_name=f"{repo}-{name}.cdx.json".replace("/", "-"),
+    )
+
+
+@app.route("/api/sboms/archive", methods=["POST"])
+def api_sboms_archive():
+    """.tar.gz of the SBOMs in the form field ids (JSON list of /api/sboms ids)"""
+    archive = io.BytesIO()
+    with tarfile.open(fileobj=archive, mode="w:gz") as tar:
+        for id in json.loads(request.form["ids"]):
+            org, repo, ref = id.split("/", 2)
+            # None if it escapes SBOM_REPOS:
+            path = safe_join(SBOM_REPOS, org, repo, "sboms", ref, "sbom.json")
+            if path and os.path.isfile(path):
+                tar.add(path, arcname=id + ".cdx.json")
+    archive.seek(0)
+    return send_file(archive, as_attachment=True, download_name="sboms.tar.gz")
 
 
 @app.route("/api/search", methods=["POST"])

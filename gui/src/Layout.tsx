@@ -16,6 +16,7 @@ const tabs = [
   "history",
   "config",
   "search",
+  "sboms",
 ];
 
 function choose_index(value: string): number {
@@ -59,6 +60,7 @@ const Layout = () => {
             <Tab label="History" {...a11yProps(3)} />
             <Tab label="Config" {...a11yProps(4)} />
             <Tab label="Search" {...a11yProps(5)} />
+            <Tab label="SBOMs" {...a11yProps(6)} />
           </Tabs>
         </Box>
       </Box>

@@ -22,6 +22,9 @@ services:
     command: python3 -m paintdry serve
     ports:
       - "8000:8000"
+    # SBOMs from the github module, see /api/sboms:
+    volumes:
+      - ./mount-state:/paintdry/mount-state:ro
     environment:
       - POSTGRES_NAME=postgres
       - POSTGRES_USER=postgres
