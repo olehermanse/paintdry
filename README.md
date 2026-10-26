@@ -28,7 +28,7 @@ Some examples of things you might want to "monitor" in this way:
   - Whether a repository is public / private.
   - What security settings are enabled or a GitHub repo or organization.
 - Git:
-  - Number of unsigned commits you've made.
+  - Number of unsigned commits you've made, or signed with a key which is not a current employee's.
     If you sign all your commits, it should be constant or zero.
 
 All of these are "arguable", depending on how you use git, manage your website, release software, etc. so the goal is to provide configurability to use the tool for things which make sense in your situation.
@@ -158,6 +158,13 @@ If you're using modules which need secrets, such as the `github` module, you wil
   "github_access_token": "PUT_GITHUB_PERSONAL_ACCESS_TOKEN_CLASSIC_HERE",
   "github_organizations": ["NorthernTechHQ", "cfengine", "mendersoftware"]
 }
+```
+
+The `github` module checks commit signatures against the employees' public keys, in a folder with `current_employees/` and `ex_employees/` containing `<name>.asc` and `<name>.fp` files (the `.pub-keys` folder of mystiko).
+By default, `../mystiko/.pub-keys` is mounted, set `PUB_KEYS` to use another path:
+
+```
+PUB_KEYS=/path/to/.pub-keys docker compose up
 ```
 
 ## Run
