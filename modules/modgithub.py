@@ -33,10 +33,6 @@ SBOM_REF_REGEX = re.compile(
 )
 CONFIG_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config")
 SECRETS_JSON = os.path.join(CONFIG_FOLDER, "secrets.json")
-# The .pub-keys folder of mystiko, mounted in docker-compose.yml, with
-# <name>.asc and <name>.fp (fingerprint) files in current_employees/ and
-# ex_employees/:
-PUB_KEYS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pub-keys")
 
 
 class GitHubAbort(Exception):
@@ -192,12 +188,12 @@ def write_tags(repo_path, branch_path):
         f.write(json.dumps(tag_data, indent=2))
 
 
-def import_pub_keys():
+def import_pub_keys(pub_keys):
     """Import the employees' public keys into gpg, so git log --show-signature
     can verify their signatures. Returns False if there are no keys."""
-    keys = glob.glob(os.path.join(PUB_KEYS, "*_employees", "*.asc"))
+    keys = glob.glob(os.path.join(pub_keys, "*_employees", "*.asc")) if pub_keys else []
     if not keys:
-        print(f"Warning: No public keys in {PUB_KEYS} - skipping commit signatures")
+        print(f"Warning: No public keys in {pub_keys} - skipping commit signatures")
         return False
     result = subprocess.run(
         ["gpg", "--batch", "--quiet", "--import", *keys],
@@ -223,24 +219,28 @@ def read_fingerprints(folder):
 
 
 @cache
-def get_employee_domains():
+def get_github_config():
     path = os.path.join(CONFIG_FOLDER, "config-override.json")
     if not os.path.isfile(path):
         path = os.path.join(CONFIG_FOLDER, "config.json")
     with open(path, "r") as f:
         config = json.load(f)
-    return tuple(config["modules"]["github"].get("employee_domains", []))
+    return config["modules"]["github"]
 
 
-def write_commit_signatures(repo_path, branch_path):
-    """Count the signed commits of each key owner (<name>.fp in PUB_KEYS),
+def get_employee_domains():
+    return tuple(get_github_config().get("employee_domains", []))
+
+
+def write_commit_signatures(repo_path, branch_path, pub_keys):
+    """Count the signed commits of each key owner (<name>.fp in pub_keys),
     and the unsigned / unknown key commits of each employee (committer email).
     Saved in <repo_path>/commit_signatures.json"""
     # Not whether they are current or ex employees, so the counts don't change
     # when an employee leaves (the key is moved to ex_employees/), see change():
     owners = {}
     for folder in ("current_employees", "ex_employees"):
-        owners.update(read_fingerprints(os.path.join(PUB_KEYS, folder)))
+        owners.update(read_fingerprints(os.path.join(pub_keys, folder)))
     # Not cmd(), it would print the whole log:
     log = subprocess.run(
         ["git", "log", "--format=raw", "--show-signature"],
@@ -355,6 +355,22 @@ class ModGitHub(ModBase):
         # from the repo root.
         state = self.cache_folder or "mount-state/"
         return os.path.join(state, "repos", "github.com", resource)
+
+    def pub_keys_folder(self):
+        """The folder with the employees' <name>.asc and <name>.fp (fingerprint)
+        files in current_employees/ and ex_employees/, in a repo we clone.
+        From pub_keys in config.json, <org>/<repo>/<path in repo>, or None"""
+        pub_keys = get_github_config().get("pub_keys")
+        if not pub_keys:
+            return None
+        org, name, subfolder = pub_keys.split("/", 2)
+        path = self.repo_folder(f"{org}/{name}")
+        try:
+            with open(os.path.join(path, "metadata.json"), "r") as f:
+                branch = json.load(f)["default_branch"]
+        except (FileNotFoundError, KeyError):
+            return None  # Not cloned yet
+        return os.path.join(path, "branches", branch, subfolder)
 
     def example_requests(self):
         return [
@@ -650,7 +666,10 @@ class ModGitHub(ModBase):
             )
             # Ex employees' keys shouldn't sign new commits. Checked now, not
             # when observed, so leaving doesn't change the observation:
-            ex = set(read_fingerprints(os.path.join(PUB_KEYS, "ex_employees")).values())
+            pub_keys = self.pub_keys_folder()
+            ex = set()
+            if pub_keys:
+                ex = set(read_fingerprints(os.path.join(pub_keys, "ex_employees")).values())
             resigned = any(
                 n > old.get("signed", {}).get(name, 0)
                 for name, n in new.get("signed", {}).items()
@@ -835,7 +854,7 @@ class ModGitHub(ModBase):
         try:
             write_tags(path, branch_path)
             if self.pub_keys:
-                write_commit_signatures(path, branch_path)
+                write_commit_signatures(path, branch_path, self.pub_keys)
             write_sboms(path, branch_path)
             self.write_last_updated(repo)
         except Exception as e:
@@ -943,7 +962,9 @@ class ModGitHub(ModBase):
         if not self.request_backlog:
             return
         self.setup_github(self.secrets_file())
-        self.pub_keys = import_pub_keys()
+        self.pub_keys = self.pub_keys_folder()
+        if not import_pub_keys(self.pub_keys):
+            self.pub_keys = None
 
         self.executor = ThreadPoolExecutor(max_workers=PROCESSING_THREADS)
         try:

@@ -435,11 +435,11 @@ wheels = [
 
 [[package]]
 name = "glrp"
-version = "0.3.3"
+version = "0.3.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/04/a7/68f729fcba4140180d38f460345a9be7dae7c5f97eba4a5e72c0b653282f/glrp-0.3.3.tar.gz", hash = "sha256:d984422d898c554fae928970492c20ae06cc03d15add56243e07ea7b4aa7ed07", size = 18139, upload-time = "2025-07-28T17:22:41.022Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/f9/1384b705b27bc30b190b8635cb33c8b7daf323e7f08636fe2234304510c8/glrp-0.3.4.tar.gz", hash = "sha256:763cf367caed38bd4fbd169c2aed81cea3cfdd0e17de487572a428cdd9376b5a", size = 18678, upload-time = "2026-10-26T13:35:33.417Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/74/c4da7c00785b9c9796a547d1ae500f77e5ad0e593c0338bcf46b4af329ee/glrp-0.3.3-py3-none-any.whl", hash = "sha256:3221bd1567a0fdcac5983b90aef573d3664c2d6fc2f6037c976dfbce430c7e6f", size = 17645, upload-time = "2025-07-28T17:22:39.608Z" },
+    { url = "https://files.pythonhosted.org/packages/52/b0/a5de0cd583d6404cfff92ee5c0b446ed200cbcdb84f4849ab9583c2ca2fb/glrp-0.3.4-py3-none-any.whl", hash = "sha256:c0b7fc7e9504ebb17bc37543d7f012aa847a21b5eada8cc9cc3d2e786e27044b", size = 18103, upload-time = "2026-10-26T13:35:32.246Z" },
 ]
 
 [[package]]
@@ -597,7 +597,7 @@ test = [
 requires-dist = [
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "flask", specifier = ">=3.1.2" },
-    { name = "glrp", specifier = ">=0.3.3" },
+    { name = "glrp", specifier = ">=0.3.4" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0" },
     { name = "requests", specifier = ">=2.32.5" },

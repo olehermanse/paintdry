@@ -39,8 +39,6 @@ services:
     init: true
     volumes:
       - ./mount-state:/paintdry/mount-state
-      # Employees' public keys for commit signatures (mystiko checkout):
-      - ${PUB_KEYS:-../mystiko/.pub-keys}:/paintdry/pub-keys:ro
     environment:
       - PGHOST=postgres
       - PGDATABASE=postgres

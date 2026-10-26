@@ -160,12 +160,9 @@ If you're using modules which need secrets, such as the `github` module, you wil
 }
 ```
 
-The `github` module checks commit signatures against the employees' public keys, in a folder with `current_employees/` and `ex_employees/` containing `<name>.asc` and `<name>.fp` files (the `.pub-keys` folder of mystiko).
-By default, `../mystiko/.pub-keys` is mounted, set `PUB_KEYS` to use another path:
-
-```
-PUB_KEYS=/path/to/.pub-keys docker compose up
-```
+The `github` module checks commit signatures against the employees' public keys, in a folder with `current_employees/` and `ex_employees/` containing `<name>.asc` and `<name>.fp` files.
+Set `pub_keys` in the `github` module config to `<org>/<repo>/<path in repo>`, e.g. `NorthernTechHQ/mystiko/.pub-keys`.
+The repo must be one the `github` module clones (in its targets), commit signatures are skipped until it is cloned.
 
 ## Run
 
