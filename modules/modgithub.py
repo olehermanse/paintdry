@@ -117,7 +117,7 @@ def trivy_scan(path):
     """Return a CycloneDX SBOM (dict) for the files in path, or None"""
     try:
         result = subprocess.run(
-            ["trivy", "fs", "--quiet", "--format", "cyclonedx", path],
+            ["trivy", "fs", "--quiet", "--format", "cyclonedx", "--scanners", "vuln", path],
             capture_output=True,
             text=True,
         )
@@ -634,6 +634,17 @@ class ModGitHub(ModBase):
                     "timestamp": timestamp,
                     "severity": "none",
                 }
+            # Vulnerability IDs (e.g. CVE-2024-1234) found by trivy --scanners vuln:
+            vulnerabilities = {v["id"] for v in sbom.get("vulnerabilities", [])}
+            yield {
+                "operation": "observation",
+                "resource": repo,
+                "module": "github",
+                "attribute": f"vulnerabilities:{ref}",
+                "value": json.dumps(sorted(vulnerabilities)),
+                "timestamp": timestamp,
+                "severity": "none",
+            }
 
     def observation(self, request: dict) -> Iterable[dict]:
         resource = normalize_github(request["resource"])
@@ -676,6 +687,10 @@ class ModGitHub(ModBase):
                 if name in ex
             )
             request["severity"] = "high" if added or resigned else "notice"
+        elif attribute.startswith("vulnerabilities:"):
+            # New vulnerabilities are serious, fixed ones are not:
+            added = set(request["new_value"]) - set(request["old_value"])
+            request["severity"] = "high" if added else "none"
         yield request
 
     # Downloading from GitHub
