@@ -3,6 +3,9 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from collections.abc import Iterable
 from modlib import ModBase, strip_prefix, now
+from glrp.internal_parser import parse as parse_git_log
+import glob
+import io
 import os
 import re
 import shutil
@@ -28,10 +31,8 @@ SHA_LENGTH = len("d9028fceac74241e743fc4d1d832cb4662e976eb")
 SBOM_REF_REGEX = re.compile(
     r"master|main|production|staging|v?\d+(\.\d+){0,2}(\.x)?(-\d+)?"
 )
-
-SECRETS_JSON = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "config", "secrets.json"
-)
+CONFIG_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config")
+SECRETS_JSON = os.path.join(CONFIG_FOLDER, "secrets.json")
 
 
 class GitHubAbort(Exception):
@@ -187,6 +188,100 @@ def write_tags(repo_path, branch_path):
         f.write(json.dumps(tag_data, indent=2))
 
 
+def import_pub_keys(pub_keys):
+    """Import the employees' public keys into gpg, so git log --show-signature
+    can verify their signatures. Returns False if there are no keys."""
+    keys = glob.glob(os.path.join(pub_keys, "*_employees", "*.asc")) if pub_keys else []
+    if not keys:
+        print(f"Warning: No public keys in {pub_keys} - skipping commit signatures")
+        return False
+    result = subprocess.run(
+        ["gpg", "--batch", "--quiet", "--import", *keys],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        print(f"Warning: Importing public keys failed: {result.stderr}")
+    return True
+
+
+def read_fingerprints(folder):
+    """{fingerprint: name} from the <name>.fp files of folder, like glrp --trusted"""
+    fingerprints = {}
+    for path in glob.glob(os.path.join(folder, "*.fp")):
+        name = os.path.basename(path)[: -len(".fp")]
+        with open(path, "r") as f:
+            for line in f.read().split("\n"):
+                line = line.replace(" ", "")
+                if line:
+                    fingerprints[line] = name
+    return fingerprints
+
+
+@cache
+def get_github_config():
+    path = os.path.join(CONFIG_FOLDER, "config-override.json")
+    if not os.path.isfile(path):
+        path = os.path.join(CONFIG_FOLDER, "config.json")
+    with open(path, "r") as f:
+        config = json.load(f)
+    return config["modules"]["github"]
+
+
+def get_employee_domains():
+    return tuple(get_github_config().get("employee_domains", []))
+
+
+def write_commit_signatures(repo_path, branch_path, pub_keys):
+    """Count the signed commits of each key owner (<name>.fp in pub_keys),
+    and the unsigned / unknown key commits of each employee (committer email).
+    Saved in <repo_path>/commit_signatures.json"""
+    # Not whether they are current or ex employees, so the counts don't change
+    # when an employee leaves (the key is moved to ex_employees/), see change():
+    owners = {}
+    for folder in ("current_employees", "ex_employees"):
+        owners.update(read_fingerprints(os.path.join(pub_keys, folder)))
+    # Not cmd(), it would print the whole log:
+    log = subprocess.run(
+        ["git", "log", "--format=raw", "--show-signature"],
+        cwd=branch_path,
+        capture_output=True,
+        text=True,
+        errors="replace",
+    )
+    if log.returncode != 0:
+        print(f"git log failed for {branch_path}: {log.stderr}")
+        return
+    signatures = {"signed": {}, "unsigned": {}, "unknown": {}, "offending_commits": {}}
+    try:
+        for commit in parse_git_log(io.StringIO(log.stdout), replace_errors=False):
+            fingerprint = commit.get("fingerprint")
+            # Anyone can make a signature which claims to be from a key, it
+            # must also be verified (the key is imported):
+            valid = commit.get("valid_signature", False)
+            name = None
+            if valid and fingerprint:
+                # Some .fp files have the long key ID (the last 16 characters
+                # of the fingerprint) instead of the whole fingerprint:
+                name = owners.get(fingerprint, owners.get(fingerprint[-16:]))
+            # Any committer email, also ex employees using another one:
+            if name:
+                signatures["signed"][name] = signatures["signed"].get(name, 0) + 1
+                continue
+            # The committer signs, not the author (e.g. GitHub signs merges):
+            email = commit["committer"]["email"]
+            if email.split("@")[-1] not in get_employee_domains():
+                continue
+            kind = "unknown" if fingerprint else "unsigned"
+            signatures[kind][email] = signatures[kind].get(email, 0) + 1
+            signatures["offending_commits"][commit["commit"]] = kind
+    except Exception as e:
+        # E.g. assertions in glrp for git output it doesn't understand:
+        print(f"glrp failed for {branch_path}: {e!r}")
+        return
+    atomic_write(os.path.join(repo_path, "commit_signatures.json"), signatures)
+
+
 def get_secrets(secrets_json):
     """Return secrets dict, or None if there are no secrets (offline mode)"""
     try:
@@ -260,6 +355,22 @@ class ModGitHub(ModBase):
         # from the repo root.
         state = self.cache_folder or "mount-state/"
         return os.path.join(state, "repos", "github.com", resource)
+
+    def pub_keys_folder(self):
+        """The folder with the employees' <name>.asc and <name>.fp (fingerprint)
+        files in current_employees/ and ex_employees/, in a repo we clone.
+        From pub_keys in config.json, <org>/<repo>/<path in repo>, or None"""
+        pub_keys = get_github_config().get("pub_keys")
+        if not pub_keys:
+            return None
+        org, name, subfolder = pub_keys.split("/", 2)
+        path = self.repo_folder(f"{org}/{name}")
+        try:
+            with open(os.path.join(path, "metadata.json"), "r") as f:
+                branch = json.load(f)["default_branch"]
+        except (FileNotFoundError, KeyError):
+            return None  # Not cloned yet
+        return os.path.join(path, "branches", branch, subfolder)
 
     def example_requests(self):
         return [
@@ -484,6 +595,20 @@ class ModGitHub(ModBase):
                 "timestamp": timestamp,
                 "severity": "none",
             }
+        signatures = folder + "/commit_signatures.json"
+        # Employees should sign their commits in public repos, see change():
+        if data.get("visibility") == "public" and os.path.isfile(signatures):
+            with open(signatures, "r") as f:
+                signatures = json.loads(f.read())
+            yield {
+                "operation": "observation",
+                "resource": repo,
+                "module": "github",
+                "attribute": "commit_signatures",
+                "value": json.dumps(signatures, sort_keys=True),
+                "timestamp": timestamp,
+                "severity": "none",
+            }
 
         for ref, path in list_sboms(folder):
             with open(path, "r") as f:
@@ -530,6 +655,27 @@ class ModGitHub(ModBase):
             # were created, so not just comparing lengths):
             deleted = set(request["old_value"]) - set(request["new_value"])
             request["severity"] = "high" if deleted else "notice"
+        elif attribute == "commit_signatures":
+            old = request["old_value"]
+            new = request["new_value"]
+            # Old commits can't be fixed, new unsigned / unknown key ones are
+            # what we want to catch (fewer means the history was rewritten or
+            # a key was added):
+            added = set(new.get("offending_commits", {})) - set(
+                old.get("offending_commits", {})
+            )
+            # Ex employees' keys shouldn't sign new commits. Checked now, not
+            # when observed, so leaving doesn't change the observation:
+            pub_keys = self.pub_keys_folder()
+            ex = set()
+            if pub_keys:
+                ex = set(read_fingerprints(os.path.join(pub_keys, "ex_employees")).values())
+            resigned = any(
+                n > old.get("signed", {}).get(name, 0)
+                for name, n in new.get("signed", {}).items()
+                if name in ex
+            )
+            request["severity"] = "high" if added or resigned else "notice"
         yield request
 
     # Downloading from GitHub
@@ -707,6 +853,8 @@ class ModGitHub(ModBase):
         path = self.repo_folder(repo)
         try:
             write_tags(path, branch_path)
+            if self.pub_keys:
+                write_commit_signatures(path, branch_path, self.pub_keys)
             write_sboms(path, branch_path)
             self.write_last_updated(repo)
         except Exception as e:
@@ -814,6 +962,9 @@ class ModGitHub(ModBase):
         if not self.request_backlog:
             return
         self.setup_github(self.secrets_file())
+        self.pub_keys = self.pub_keys_folder()
+        if not import_pub_keys(self.pub_keys):
+            self.pub_keys = None
 
         self.executor = ThreadPoolExecutor(max_workers=PROCESSING_THREADS)
         try:

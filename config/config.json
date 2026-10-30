@@ -24,7 +24,9 @@
     },
     "github": {
       "command": "python3 /paintdry/modules/modgithub.py",
-      "slow": true
+      "slow": true,
+      "employee_domains": ["northern.tech", "cfengine.com", "mender.io"],
+      "pub_keys": "NorthernTechHQ/mystiko/.pub-keys"
     }
   }
 }
