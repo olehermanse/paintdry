@@ -94,9 +94,15 @@ CREATE TABLE IF NOT EXISTS changes (
     old_value TEXT NOT NULL,
     new_value TEXT NOT NULL,
     timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
-    severity TEXT NOT NULL DEFAULT '',
-    CONSTRAINT changes_constraint UNIQUE (module, attribute, resource, timestamp, old_value, new_value)
+    severity TEXT NOT NULL DEFAULT ''
 );
+
+-- Values can be too big for a btree index (max ~2.7 KB, e.g. commit_signatures),
+-- so the uniqueness is on their hashes (replaces the old changes_constraint
+-- UNIQUE constraint on the values themselves):
+ALTER TABLE changes DROP CONSTRAINT IF EXISTS changes_constraint;
+CREATE UNIQUE INDEX IF NOT EXISTS changes_constraint
+    ON changes (module, attribute, resource, timestamp, md5(old_value), md5(new_value));
 
 DROP VIEW IF EXISTS changes_pretty;
 CREATE VIEW changes_pretty AS
