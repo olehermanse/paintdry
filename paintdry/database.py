@@ -81,6 +81,10 @@ class Database:
             ),
         )
 
+    def get_config(self) -> dict[str, str]:
+        """Settings from the config table, see schema.sql for the defaults"""
+        return dict(self._query("SELECT key, value FROM config;"))
+
     def delete_old(self, days: int) -> dict[str, int]:
         """Delete changes and history older than days, returns the counts"""
         deleted = {}

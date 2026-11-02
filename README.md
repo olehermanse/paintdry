@@ -164,6 +164,16 @@ The `github` module checks commit signatures against the employees' public keys,
 Set `pub_keys` in the `github` module config to `<org>/<repo>/<path in repo>`, e.g. `NorthernTechHQ/mystiko/.pub-keys`.
 The repo must be one the `github` module clones (in its targets), commit signatures are skipped until it is cloned.
 
+### Database config
+
+Some settings are in the `config` table, so they can be changed while running (e.g. in pgweb, http://localhost:9000):
+
+```
+UPDATE config SET value='365' WHERE key='retention_days';
+```
+
+- `retention_days` - Changes and history older than this are deleted (default `730`, 2 years).
+
 ## Run
 
 After editing config and secrets as shown above, run the application with docker-compose:

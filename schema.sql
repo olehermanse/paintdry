@@ -30,6 +30,19 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
+-- Settings which can be changed while running, e.g.:
+-- UPDATE config SET value='365' WHERE key='retention_days';
+CREATE TABLE IF NOT EXISTS config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+-- Defaults, existing values are kept:
+INSERT INTO config (key, value) VALUES
+    -- Changes and history older than this are deleted:
+    ('retention_days', '730')
+ON CONFLICT (key) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS resources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     resource TEXT NOT NULL,

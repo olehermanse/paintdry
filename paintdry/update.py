@@ -391,9 +391,16 @@ class Updater:
 
         # Read config
         config = JsonFile(get_config_filename())
+        db_config = self.database.get_config()
 
         # Delete old changes and history
-        days = 2 * 365
+        try:
+            days = int(db_config.get("retention_days", 730))
+        except ValueError:
+            print(
+                f"Warning: Invalid retention_days '{db_config['retention_days']}' - using 730"
+            )
+            days = 730
         deleted = self.database.delete_old(days)
         print(f"Deleted changes / history older than {days} days: {deleted}")
 
