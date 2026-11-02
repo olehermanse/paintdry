@@ -102,12 +102,25 @@ def api_sboms():
     return sboms
 
 
+def sbom_bytes(path):
+    """SBOM file contents, without the vulnerabilities from trivy unless
+    requested with ?vulnerabilities=true (we don't want to expose them)"""
+    with open(path, "r") as f:
+        sbom = json.loads(f.read())
+    if request.values.get("vulnerabilities") != "true":
+        sbom.pop("vulnerabilities", None)
+    return json.dumps(sbom, indent=2).encode()
+
+
 @app.route("/api/sboms/<org>/<repo>/<kind>/<path:name>")
 def api_get_sbom(org, repo, kind, name):
-    # send_from_directory() 404s on missing files and paths escaping SBOM_REPOS:
-    return send_from_directory(
-        SBOM_REPOS,
-        os.path.join(org, repo, "sboms", kind, name, "sbom.json"),
+    # None if it escapes SBOM_REPOS:
+    path = safe_join(SBOM_REPOS, org, repo, "sboms", kind, name, "sbom.json")
+    if not path or not os.path.isfile(path):
+        abort(404)
+    return send_file(
+        io.BytesIO(sbom_bytes(path)),
+        mimetype="application/json",
         as_attachment=True,
         download_name=f"{repo}-{name}.cdx.json".replace("/", "-"),
     )
@@ -123,7 +136,11 @@ def api_sboms_archive():
             # None if it escapes SBOM_REPOS:
             path = safe_join(SBOM_REPOS, org, repo, "sboms", ref, "sbom.json")
             if path and os.path.isfile(path):
-                tar.add(path, arcname=id + ".cdx.json")
+                data = sbom_bytes(path)
+                info = tarfile.TarInfo(id + ".cdx.json")
+                info.size = len(data)
+                info.mtime = int(os.path.getmtime(path))
+                tar.addfile(info, io.BytesIO(data))
     archive.seek(0)
     return send_file(archive, as_attachment=True, download_name="sboms.tar.gz")
 
