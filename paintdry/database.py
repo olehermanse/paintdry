@@ -66,11 +66,13 @@ class Database:
         return result
 
     def update_change(self, change: Change):
+        """Returns the updated rows, empty if the severity was already set"""
         return self._query(
             """
             UPDATE changes
             SET severity=%s
             WHERE (severity='' OR severity='unknown') AND resource=%s AND attribute=%s AND old_value=%s AND new_value=%s
+            RETURNING id
             """,
             (
                 change.severity,

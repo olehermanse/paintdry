@@ -40,7 +40,11 @@ CREATE TABLE IF NOT EXISTS config (
 -- Defaults, existing values are kept:
 INSERT INTO config (key, value) VALUES
     -- Changes and history older than this are deleted:
-    ('retention_days', '730')
+    ('retention_days', '730'),
+    -- Comma separated, no emails are sent if empty:
+    ('alert_emails', ''),
+    -- Changes with this severity or above are emailed:
+    ('alert_min_severity', 'high')
 ON CONFLICT (key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS resources (
