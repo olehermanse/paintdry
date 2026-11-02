@@ -73,6 +73,7 @@ function App() {
             element={
               <TableView
                 api={"/api/changes"}
+                dateField="timestamp"
                 fields={[
                   "resource",
                   "module",
