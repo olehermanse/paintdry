@@ -74,6 +74,7 @@ function App() {
               <TableView
                 api={"/api/changes"}
                 dateField="timestamp"
+                dismissable={true}
                 fields={[
                   "resource",
                   "module",

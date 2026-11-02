@@ -81,6 +81,12 @@ class Database:
             ),
         )
 
+    def dismiss_change(self, id: str):
+        """Returns the updated rows, empty if there is no such change"""
+        return self._query(
+            "UPDATE changes SET dismissed=TRUE WHERE id=%s RETURNING id;", (id,)
+        )
+
     def get_config(self) -> dict[str, str]:
         """Settings from the config table, see schema.sql for the defaults"""
         return dict(self._query("SELECT key, value FROM config;"))
@@ -322,8 +328,10 @@ class Database:
                 "old_value",
                 "new_value",
                 "timestamp",
+                "severity",
             ],
-            {"id": id} if singular else None,
+            # Dismissed changes can still be looked up by id:
+            {"id": id} if singular else {"dismissed": False},
         )
         if not objects:
             return []
@@ -400,6 +408,7 @@ class Database:
                         'severity', severity)
                     AS expanded_data
                 FROM changes
+                WHERE NOT dismissed
             ),
             filtered_results AS (
                 SELECT *, COUNT(*) OVER() AS total_count

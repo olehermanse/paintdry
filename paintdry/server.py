@@ -78,6 +78,14 @@ def api_get_changes(id):
     return result[0]
 
 
+# uuid, so invalid ids are 404 instead of a database error:
+@app.route("/api/changes/<uuid:id>/dismiss", methods=["POST"])
+def api_dismiss_change(id):
+    if not database.dismiss_change(str(id)):
+        abort(404)
+    return {"id": str(id), "dismissed": True}
+
+
 @app.route("/api/sboms")
 def api_sboms():
     sboms = []

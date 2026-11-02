@@ -107,8 +107,13 @@ CREATE TABLE IF NOT EXISTS changes (
     old_value TEXT NOT NULL,
     new_value TEXT NOT NULL,
     timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
-    severity TEXT NOT NULL DEFAULT ''
+    severity TEXT NOT NULL DEFAULT '',
+    -- Dismissed changes are hidden in the UI / API:
+    dismissed BOOLEAN NOT NULL DEFAULT FALSE
 );
+
+-- Databases created before the dismissed column:
+ALTER TABLE changes ADD COLUMN IF NOT EXISTS dismissed BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Values can be too big for a btree index (max ~2.7 KB, e.g. commit_signatures),
 -- so the uniqueness is on their hashes (replaces the old changes_constraint
@@ -127,11 +132,11 @@ CREATE VIEW changes_severity AS
 SELECT * FROM
 (
   SELECT DISTINCT ON (module, resource, attribute)
-    id, module, resource, attribute, old_value, new_value, timestamp, severity
+    id, module, resource, attribute, old_value, new_value, timestamp, severity, dismissed
   FROM changes
   ORDER BY module, resource, attribute, timestamp DESC
 )
-WHERE severity != 'none'
+WHERE severity != 'none' AND NOT dismissed
 ORDER BY
 CASE severity
     WHEN 'critical' THEN 5
