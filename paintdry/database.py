@@ -81,6 +81,24 @@ class Database:
             ),
         )
 
+    def delete_old(self, days: int) -> dict[str, int]:
+        """Delete changes and history older than days, returns the counts"""
+        deleted = {}
+        for table in ("changes", "history"):
+            rows = self._query(
+                f"""
+                WITH deleted AS (
+                    DELETE FROM {table}
+                    WHERE timestamp < NOW() - make_interval(days => %s)
+                    RETURNING 1
+                )
+                SELECT COUNT(*) FROM deleted;
+                """,
+                (days,),
+            )
+            deleted[table] = rows[0][0]
+        return deleted
+
     def upsert_resource(self, resource: Resource, source):
         return self._query(
             """

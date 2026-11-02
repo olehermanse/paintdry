@@ -392,6 +392,11 @@ class Updater:
         # Read config
         config = JsonFile(get_config_filename())
 
+        # Delete old changes and history
+        days = 2 * 365
+        deleted = self.database.delete_old(days)
+        print(f"Deleted changes / history older than {days} days: {deleted}")
+
         # Setup state
         state = ensure_folder("./state")
         metadata = JsonFile(os.path.join("state", "metadata.json"))
