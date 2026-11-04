@@ -1,5 +1,6 @@
 import re
 from time import sleep
+from urllib.robotparser import RobotFileParser
 from functools import cache
 from collections.abc import Iterable
 
@@ -16,7 +17,7 @@ from modlib import (
 
 
 def good_paths():
-    return ("security.txt", ".well-known/security.txt")
+    return ("security.txt", ".well-known/security.txt", "robots.txt")
 
 
 def bad_paths():
@@ -100,6 +101,19 @@ class Response:
             key = header.lower().replace("-", "_")
             value = r.headers.get(header, "")
             self.notable_headers[key] = value
+
+
+def indexing_allowed(robots_txt: str) -> bool:
+    """Whether robots.txt allows all crawlers ("*") to index the front page"""
+    parser = RobotFileParser()
+    parser.parse(robots_txt.splitlines())
+    return parser.can_fetch("*", "/")
+
+
+def indexing_severity(url: str, allowed: bool) -> str:
+    """Staging websites should not be indexed, production websites should"""
+    staging = "staging" in url_to_hostname(url)
+    return "medium" if allowed == staging else "none"
 
 
 @cache
@@ -255,6 +269,30 @@ class ModHTTP(ModBase):
         assume_html = not url.endswith((".txt", ".json", ".css", ".csv", ".js"))
         if status_code in (200, 201) and assume_html:
             yield from process_html(url, r)
+        if url.endswith("/robots.txt") and (
+            status_code == 200 or 400 <= status_code < 500
+        ):
+            # A missing robots.txt (4xx) allows everything:
+            robots_txt = r.body if status_code == 200 else ""
+            allowed = indexing_allowed(robots_txt)
+            yield {
+                "operation": request["operation"],
+                "resource": url,
+                "module": "http",
+                "attribute": "robots_txt",
+                "value": robots_txt,
+                "timestamp": r.timestamp,
+                "severity": "none",
+            }
+            yield {
+                "operation": request["operation"],
+                "resource": url,
+                "module": "http",
+                "attribute": "indexing_allowed",
+                "value": "true" if allowed else "false",
+                "timestamp": r.timestamp,
+                "severity": indexing_severity(url, allowed),
+            }
 
     def change(self, request) -> Iterable[dict]:
         if not request["new_value"]:
@@ -267,6 +305,11 @@ class ModHTTP(ModBase):
             severity = severity_from_status_code(
                 request["resource"], request["new_value"]
             )
+            yield from respond_with_severity(request, severity)
+            return
+        if request["attribute"] == "indexing_allowed":
+            allowed = request["new_value"] == "true"
+            severity = indexing_severity(request["resource"], allowed)
             yield from respond_with_severity(request, severity)
             return
         if not request["old_value"]:
