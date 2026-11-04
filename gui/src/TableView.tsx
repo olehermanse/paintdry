@@ -16,6 +16,15 @@ function columns(fields: string[]) {
       o.maxWidth = 100;
       o.flex = 0; // stick to 100, do not grow
     }
+    if (["value", "old_value", "new_value"].includes(field)) {
+      // Values can be huge (e.g. commit_signatures), don't let autosize
+      // stretch the column, they're cut off (...) and the whole value is
+      // shown when clicking the row:
+      o.maxWidth = 400;
+      // Show objects as JSON instead of [object Object]:
+      o.valueFormatter = (value) =>
+        typeof value === "object" ? JSON.stringify(value) : value;
+    }
     c.push(o);
   }
   return c;
