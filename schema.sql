@@ -30,6 +30,23 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
+-- Settings which can be changed while running, e.g.:
+-- UPDATE config SET value='365' WHERE key='retention_days';
+CREATE TABLE IF NOT EXISTS config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+-- Defaults, existing values are kept:
+INSERT INTO config (key, value) VALUES
+    -- Changes and history older than this are deleted:
+    ('retention_days', '730'),
+    -- Comma separated, no emails are sent if empty:
+    ('alert_emails', ''),
+    -- Changes with this severity or above are emailed:
+    ('alert_min_severity', 'high')
+ON CONFLICT (key) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS resources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     resource TEXT NOT NULL,
@@ -94,8 +111,13 @@ CREATE TABLE IF NOT EXISTS changes (
     old_value TEXT NOT NULL,
     new_value TEXT NOT NULL,
     timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
-    severity TEXT NOT NULL DEFAULT ''
+    severity TEXT NOT NULL DEFAULT '',
+    -- Dismissed changes are hidden in the UI / API:
+    dismissed BOOLEAN NOT NULL DEFAULT FALSE
 );
+
+-- Databases created before the dismissed column:
+ALTER TABLE changes ADD COLUMN IF NOT EXISTS dismissed BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Values can be too big for a btree index (max ~2.7 KB, e.g. commit_signatures),
 -- so the uniqueness is on their hashes (replaces the old changes_constraint
@@ -114,11 +136,11 @@ CREATE VIEW changes_severity AS
 SELECT * FROM
 (
   SELECT DISTINCT ON (module, resource, attribute)
-    id, module, resource, attribute, old_value, new_value, timestamp, severity
+    id, module, resource, attribute, old_value, new_value, timestamp, severity, dismissed
   FROM changes
   ORDER BY module, resource, attribute, timestamp DESC
 )
-WHERE severity != 'none'
+WHERE severity != 'none' AND NOT dismissed
 ORDER BY
 CASE severity
     WHEN 'critical' THEN 5

@@ -164,6 +164,33 @@ The `github` module checks commit signatures against the employees' public keys,
 Set `pub_keys` in the `github` module config to `<org>/<repo>/<path in repo>`, e.g. `NorthernTechHQ/mystiko/.pub-keys`.
 The repo must be one the `github` module clones (in its targets), commit signatures are skipped until it is cloned.
 
+### Database config
+
+Some settings are in the `config` table, so they can be changed while running (e.g. in pgweb, http://localhost:9000):
+
+```
+UPDATE config SET value='365' WHERE key='retention_days';
+UPDATE config SET value='security@example.com, admin@example.com' WHERE key='alert_emails';
+```
+
+- `retention_days` - Changes and history older than this are deleted (default `730`, 2 years).
+- `alert_emails` - Comma separated email addresses for alerts (default empty, no emails).
+- `alert_min_severity` - Changes with this [severity](#severity) or above are emailed (default `high`).
+
+Alert emails are sent with the SMTP server in `config/secrets.json`:
+
+```json
+{
+  "smtp": {
+    "host": "smtp.example.com",
+    "port": 587,
+    "username": "paintdry@example.com",
+    "password": "PUT_SMTP_PASSWORD_HERE",
+    "from": "paintdry@example.com"
+  }
+}
+```
+
 ## Run
 
 After editing config and secrets as shown above, run the application with docker-compose:

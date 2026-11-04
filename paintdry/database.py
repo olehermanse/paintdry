@@ -66,11 +66,13 @@ class Database:
         return result
 
     def update_change(self, change: Change):
+        """Returns the updated rows, empty if the severity was already set"""
         return self._query(
             """
             UPDATE changes
             SET severity=%s
             WHERE (severity='' OR severity='unknown') AND resource=%s AND attribute=%s AND old_value=%s AND new_value=%s
+            RETURNING id
             """,
             (
                 change.severity,
@@ -80,6 +82,34 @@ class Database:
                 _to_json(change.new_value),
             ),
         )
+
+    def dismiss_change(self, id: str):
+        """Returns the updated rows, empty if there is no such change"""
+        return self._query(
+            "UPDATE changes SET dismissed=TRUE WHERE id=%s RETURNING id;", (id,)
+        )
+
+    def get_config(self) -> dict[str, str]:
+        """Settings from the config table, see schema.sql for the defaults"""
+        return dict(self._query("SELECT key, value FROM config;"))
+
+    def delete_old(self, days: int) -> dict[str, int]:
+        """Delete changes and history older than days, returns the counts"""
+        deleted = {}
+        for table in ("changes", "history"):
+            rows = self._query(
+                f"""
+                WITH deleted AS (
+                    DELETE FROM {table}
+                    WHERE timestamp < NOW() - make_interval(days => %s)
+                    RETURNING 1
+                )
+                SELECT COUNT(*) FROM deleted;
+                """,
+                (days,),
+            )
+            deleted[table] = rows[0][0]
+        return deleted
 
     def upsert_resource(self, resource: Resource, source):
         return self._query(
@@ -300,8 +330,10 @@ class Database:
                 "old_value",
                 "new_value",
                 "timestamp",
+                "severity",
             ],
-            {"id": id} if singular else None,
+            # Dismissed changes can still be looked up by id:
+            {"id": id} if singular else {"dismissed": False},
         )
         if not objects:
             return []
@@ -378,6 +410,7 @@ class Database:
                         'severity', severity)
                     AS expanded_data
                 FROM changes
+                WHERE NOT dismissed
             ),
             filtered_results AS (
                 SELECT *, COUNT(*) OVER() AS total_count

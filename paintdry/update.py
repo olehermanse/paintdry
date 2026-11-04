@@ -9,6 +9,7 @@ from subprocess import Popen, PIPE, STDOUT
 
 from paintdry.utils import JsonFile, ensure_folder, sha, timestamp
 from paintdry.database import Database
+from paintdry.alerts import send_alert_email
 from paintdry.lib import (
     ModuleRequest,
     ModuleResponse,
@@ -220,6 +221,8 @@ class Updater:
         self.cache = {}
         self.modules = {}
         self.discovery_backlog = []
+        # Changes which got their severity in this update, see send_alert_email():
+        self.assessed_changes = []
 
     def send_requests(self, name: str, requests: list[ModuleRequest]):
         # TODO: get rid of this
@@ -369,8 +372,11 @@ class Updater:
         self.process_discovery_backlog()
 
     def process_change(self, change: Change):
-        self.database.update_change(change)
-        return
+        rows = self.database.update_change(change)
+        # Empty if the severity was already set (e.g. the response came twice):
+        if rows:
+            change.id = rows[0][0]
+            self.assessed_changes.append(change)
 
     def process_changes(self):
         changes = self.database.get_new_changes()
@@ -391,6 +397,18 @@ class Updater:
 
         # Read config
         config = JsonFile(get_config_filename())
+        db_config = self.database.get_config()
+
+        # Delete old changes and history
+        try:
+            days = int(db_config.get("retention_days", 730))
+        except ValueError:
+            print(
+                f"Warning: Invalid retention_days '{db_config['retention_days']}' - using 730"
+            )
+            days = 730
+        deleted = self.database.delete_old(days)
+        print(f"Deleted changes / history older than {days} days: {deleted}")
 
         # Setup state
         state = ensure_folder("./state")
@@ -434,6 +452,8 @@ class Updater:
 
         # Send change requests
         self.process_changes()
+
+        send_alert_email(self.assessed_changes, db_config)
 
         # Commit snapshot
         metadata["last_update"] = {"time": time, "name": snapshot_name, "seq": seq}
