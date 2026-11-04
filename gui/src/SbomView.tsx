@@ -19,7 +19,12 @@ interface Sbom {
   scanned: string;
 }
 
-const columns: GridColDef[] = [
+// The vulnerabilities from trivy are left out unless asked for:
+function vulnerabilitiesQuery(vulnerabilities: boolean) {
+  return vulnerabilities ? "?vulnerabilities=true" : "";
+}
+
+const columns = (vulnerabilities: boolean): GridColDef[] => [
   { field: "org", headerName: "org", flex: 1 },
   { field: "repo", headerName: "repo", flex: 1 },
   { field: "type", headerName: "type", maxWidth: 100, flex: 0 },
@@ -38,7 +43,7 @@ const columns: GridColDef[] = [
       <Button
         variant="outlined"
         size="small"
-        href={`/api/sboms/${params.id}`}
+        href={`/api/sboms/${params.id}${vulnerabilitiesQuery(vulnerabilities)}`}
         // Download only, don't also open the row:
         onClick={(event) => event.stopPropagation()}
       >
@@ -59,6 +64,7 @@ function SbomView() {
   const [org, setOrg] = useState("");
   const [repo, setRepo] = useState("");
   const [type, setType] = useState("");
+  const [vulnerabilities, setVulnerabilities] = useState(false);
   useEffect(() => {
     fetch("/api/sboms")
       .then((response) => response.json())
@@ -136,7 +142,18 @@ function SbomView() {
           <ToggleButton value="branch">Branches</ToggleButton>
           <ToggleButton value="tag">Tags</ToggleButton>
         </ToggleButtonGroup>
-        <form method="post" action="/api/sboms/archive">
+        <ToggleButton
+          size="small"
+          value="vulnerabilities"
+          selected={vulnerabilities}
+          onChange={() => setVulnerabilities(!vulnerabilities)}
+        >
+          With vulnerabilities
+        </ToggleButton>
+        <form
+          method="post"
+          action={`/api/sboms/archive${vulnerabilitiesQuery(vulnerabilities)}`}
+        >
           <input
             type="hidden"
             name="ids"
@@ -150,7 +167,7 @@ function SbomView() {
       <div style={{ height: "70vh", width: "100%" }}>
         <DataGrid
           rows={shown}
-          columns={columns}
+          columns={columns(vulnerabilities)}
           autoPageSize={true}
           disableColumnMenu={true}
           disableRowSelectionOnClick={true}

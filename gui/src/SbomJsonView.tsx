@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Button, Stack, Typography } from "@mui/material";
+import { Button, Stack, ToggleButton, Typography } from "@mui/material";
 import CodeBlock from "./CodeBlock";
 
 function SbomJsonView() {
@@ -8,11 +8,14 @@ function SbomJsonView() {
   // E.g. cfengine/cfbs/tags/3.27.0, see /api/sboms:
   const { id = "" } = useParams();
   const [sbom, setSbom] = useState({});
+  const [vulnerabilities, setVulnerabilities] = useState(false);
+  // The vulnerabilities from trivy are left out unless asked for:
+  const url = `/api/sboms/${id}${vulnerabilities ? "?vulnerabilities=true" : ""}`;
   useEffect(() => {
-    fetch(`/api/sboms/${id}`)
+    fetch(url)
       .then((response) => response.json())
       .then(setSbom);
-  }, [id]);
+  }, [url]);
   const [org, repo, kind, ...name] = id.split("/");
   return (
     <>
@@ -26,7 +29,15 @@ function SbomJsonView() {
         <Typography sx={{ flexGrow: 1 }}>
           {org}/{repo} – {kind === "tags" ? "tag" : "branch"} {name.join("/")}
         </Typography>
-        <Button variant="contained" href={`/api/sboms/${id}`}>
+        <ToggleButton
+          size="small"
+          value="vulnerabilities"
+          selected={vulnerabilities}
+          onChange={() => setVulnerabilities(!vulnerabilities)}
+        >
+          With vulnerabilities
+        </ToggleButton>
+        <Button variant="contained" href={url}>
           Download
         </Button>
       </Stack>
