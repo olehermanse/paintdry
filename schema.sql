@@ -30,22 +30,11 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- Settings which can be changed while running, e.g.:
--- UPDATE config SET value='365' WHERE key='retention_days';
+-- Copy of "config" in config.json, replaced on every update, so it can be used in SQL:
 CREATE TABLE IF NOT EXISTS config (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
-
--- Defaults, existing values are kept:
-INSERT INTO config (key, value) VALUES
-    -- Changes and history older than this are deleted:
-    ('retention_days', '730'),
-    -- Comma separated, no emails are sent if empty:
-    ('alert_emails', ''),
-    -- Changes with this severity or above are emailed:
-    ('alert_min_severity', 'high')
-ON CONFLICT (key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS resources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

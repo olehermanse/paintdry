@@ -1,4 +1,9 @@
 {
+  "config": {
+    "retention_days": 730,
+    "alert_emails": "",
+    "alert_min_severity": "high"
+  },
   "targets": [
     {
       "modules": ["http", "dns", "tls"],

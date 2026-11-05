@@ -89,9 +89,11 @@ class Database:
             "UPDATE changes SET dismissed=TRUE WHERE id=%s RETURNING id;", (id,)
         )
 
-    def get_config(self) -> dict[str, str]:
-        """Settings from the config table, see schema.sql for the defaults"""
-        return dict(self._query("SELECT key, value FROM config;"))
+    def set_config(self, config: dict[str, str]):
+        """Replace the config table with the "config" settings from config.json"""
+        self._query("DELETE FROM config;")
+        for key, value in config.items():
+            self._query("INSERT INTO config (key, value) VALUES (%s, %s);", (key, value))
 
     def delete_old(self, days: int) -> dict[str, int]:
         """Delete changes and history older than days, returns the counts"""
