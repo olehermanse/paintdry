@@ -397,7 +397,8 @@ class Updater:
 
         # Read config
         config = JsonFile(get_config_filename())
-        db_config = self.database.get_config()
+        db_config = {k: str(v) for k, v in config.get("config", {}).items()}
+        self.database.set_config(db_config)
 
         # Delete old changes and history
         try:

@@ -164,14 +164,23 @@ The `github` module checks commit signatures against the employees' public keys,
 Set `pub_keys` in the `github` module config to `<org>/<repo>/<path in repo>`, e.g. `NorthernTechHQ/mystiko/.pub-keys`.
 The repo must be one the `github` module clones (in its targets), commit signatures are skipped until it is cloned.
 
-### Database config
+### Settings
 
-Some settings are in the `config` table, so they can be changed while running (e.g. in pgweb, http://localhost:9000):
+General settings go in `config` in `config.json`:
 
+```json
+{
+  "config": {
+    "retention_days": 365,
+    "alert_emails": "security@example.com, admin@example.com",
+    "alert_min_severity": "high"
+  },
+  "targets": [...],
+  "modules": {...}
+}
 ```
-UPDATE config SET value='365' WHERE key='retention_days';
-UPDATE config SET value='security@example.com, admin@example.com' WHERE key='alert_emails';
-```
+
+They are copied into the `config` table on every update, so they can be used in SQL.
 
 - `retention_days` - Changes and history older than this are deleted (default `730`, 2 years).
 - `alert_emails` - Comma separated email addresses for alerts (default empty, no emails).
