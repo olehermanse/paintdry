@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import {
   Button,
+  FormControlLabel,
   MenuItem,
   Stack,
+  Switch,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -142,14 +144,15 @@ function SbomView() {
           <ToggleButton value="branch">Branches</ToggleButton>
           <ToggleButton value="tag">Tags</ToggleButton>
         </ToggleButtonGroup>
-        <ToggleButton
-          size="small"
-          value="vulnerabilities"
-          selected={vulnerabilities}
-          onChange={() => setVulnerabilities(!vulnerabilities)}
-        >
-          With vulnerabilities
-        </ToggleButton>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={vulnerabilities}
+              onChange={(event) => setVulnerabilities(event.target.checked)}
+            />
+          }
+          label="With vulnerabilities"
+        />
         <form
           method="post"
           action={`/api/sboms/archive${vulnerabilitiesQuery(vulnerabilities)}`}
