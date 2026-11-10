@@ -57,6 +57,14 @@ def write_abort_timestamp(cache_folder):
         f.write(f"{now()}\n")
 
 
+def secrets_changed_since(secrets_json, timestamp):
+    try:
+        # Whole seconds, like the timestamp:
+        return int(os.path.getmtime(secrets_json)) > timestamp
+    except FileNotFoundError:
+        return False
+
+
 @cache
 def normalize_github(url: str) -> str:
     while url.endswith("/"):
@@ -335,7 +343,13 @@ class GithubSession:
             )
         )
         # 401 is a bad / expired token, everything would fail, stop too:
-        if rate_limited or r.status_code == 401 or r.status_code >= 500:
+        if r.status_code == 401:
+            raise GitHubAbort(
+                "GitHub token rejected (401 Bad credentials), it has probably "
+                "expired or been revoked: update github_access_token in "
+                "config/secrets.json"
+            )
+        if rate_limited or r.status_code >= 500:
             raise GitHubAbort(f"{r.status_code} from {url}")
         # 404 or other 403 (e.g. no access to one repo), skip just this one:
         return None
@@ -923,6 +937,11 @@ class ModGitHub(ModBase):
             if self.is_ready(request):
                 try:
                     results.extend(self.handle_request(request))
+                except GitHubAbort:
+                    # Bad token / rate limited, the other requests would fail
+                    # too, handle_files() stops (keep what we already have):
+                    self.save_response(output_dir, results)
+                    raise
                 except Exception as e:
                     # Drop it, bad data on disk shouldn't stop all other requests:
                     print(f"Failed to handle {request}: {e!r}")
@@ -963,7 +982,12 @@ class ModGitHub(ModBase):
         assert os.path.isdir(output_dir)
 
         last_abort = get_last_abort_timestamp(self.cache_folder)
-        if last_abort is not None and now() - last_abort < ABORT_TIMEOUT:
+        if (
+            last_abort is not None
+            and now() - last_abort < ABORT_TIMEOUT
+            # Try again right away when the token was updated after the abort:
+            and not secrets_changed_since(self.secrets_file(), last_abort)
+        ):
             print("Sleeping to avoid unnecessary polling after error / rate limiting")
             return
 
